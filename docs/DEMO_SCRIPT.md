@@ -24,7 +24,9 @@ right 72% of the time." (Monday: cut to `oracle reveal` + `oracle grade`.)
 **2:30-3:10 Live trade, small.** `MODULUS_EXECUTOR=baw python -m modulus run --tickers <ticker>`: Agentic Wallet quote, slippage
 check, swap, poll to FINISHED. Cut to BscScan. "Five dollars. Limit order, because it's 3am Sunday and the book is thin."
 
-**3:10-3:35 It earns.** Agent Studio ERC-8004 identity. `curl /verdict/NVDA` returns 402; pay with `baw x402-payment`; verdict
-plus B402 settlement hash. "Other agents hire the council for a cent."
+**3:10-3:35 It earns.** Agent Studio (BSC testnet): ERC-8004 identity on testnet.8004scan.io, then one ERC-8183 job
+(negotiate -> fund -> verdict delivered -> approve) with tx hashes. If B402 merchant onboarding is approved, also show
+`curl /verdict/NVDA` -> 402 `PAYMENT-REQUIRED`, `baw x402-payment preview` + `sign`, verdict + `PAYMENT-RESPONSE`.
+"Other agents hire the council for a cent."
 
 **3:35-3:50 Close.** Discovery curve on screen. "Wall Street sleeps 65 hours a week. Modulus doesn't, and it proves it on-chain."
