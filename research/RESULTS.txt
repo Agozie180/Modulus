@@ -10,3 +10,11 @@ per weekend (|idio|>0.5%):
   2026-09-25  n=25  continue 76%
   2026-10-02  n=25  continue 56%
 raw (not market-neutral) continuation: 60.6% n=99 - fading the weekend lost -69 bps
+
+=== v2: Binance Spot 24/7 study (research/FINDINGS.md) - supersedes the DEX continuation result above ===
+858 stock-weekends, 17 weekends, 87 bStocks (Jun 11 - Oct 7 2026)
+weekend = 30% of hours, 8% of volume; Sat median $1.6k vs $16.4k per bStock-hour (regular session)
+market-level weekend move called Monday direction 13/17; idio gap beta 0.52 (overshoot)
+fade idio weekend move @Sun21 UTC -> Mon open: 1-2% 66.5% +103bps (n=176); >2% 64.7% +164bps (n=85); 13/14 weekends +
+weeknight fade: -35..-43 bps (moves informed)
+Monday Oracle LOWO: Brier 0.2486 all; calls>=1%: 72.1% hit, Brier 0.2226 (n=262)
