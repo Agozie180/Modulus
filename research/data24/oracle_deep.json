@@ -1,0 +1,45 @@
+{
+ "sun21": {
+  "n": 858,
+  "beta": 0.5980941237899157,
+  "naive_mae": 228.70394131594543,
+  "raw_mae": 223.35479576251117,
+  "shrunk_mae_oos": 224.32082119463715,
+  "err_cut_raw": 0.02338895220893733,
+  "err_cut_shrunk_oos": 0.01916503972816619
+ },
+ "market": {
+  "weekends": 17,
+  "corr": 0.600354470139268,
+  "sign_hit": 0.7647058823529411
+ },
+ "idio": {
+  "corr": 0.31083101746560104,
+  "n_big": 518,
+  "hit_big": 0.6158301158301158,
+  "beta": 0.5185776323310691
+ },
+ "flow": {
+  "n": 843,
+  "corr": 0.0682868565844114,
+  "bottom_quintile_gap_bps": -18.446124498536104,
+  "top_quintile_gap_bps": 32.55608372976251
+ },
+ "basis_fri_close": {
+  "median_bps": 7.750691389976083,
+  "p90_bps": 25.191162648825483
+ },
+ "overshoot": {
+  "n": 347,
+  "same_sign": 0.6484149855907781,
+  "token_bigger_than_real": 0.4207492795389049
+ },
+ "liquidity": {
+  "weekend_share_of_volume": 0.07969908794809161,
+  "weekend_share_of_hours": 0.2976190476190476,
+  "median_hourly_qv_regular": 16419.488,
+  "median_hourly_qv_weekend": 1620.56858,
+  "median_range_regular_bps": 108.3970756032624,
+  "median_range_weekend_bps": 21.913805697589016
+ }
+}
