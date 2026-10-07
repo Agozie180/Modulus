@@ -1,0 +1,10 @@
+.env
+data/modulus.sqlite
+__pycache__/
+.pytest_cache/
+.studio/
+
+# large regenerable data (run research/fetch_history.py / python -m modulus scan)
+data/hist_1h.json
+data/snapshot.json
+data/scan_live.json
