@@ -19,8 +19,8 @@ class ValueElder(Elder):
     name, title, prior_weight = "value", "The Value Elder", 0.6
 
     def opine(self, asset, ctx) -> Opinion:
-        if asset.asset_type == 3:
-            return self.abstain("ETF: no single-company fundamentals")
+        if asset.asset_type in (2, 3):     # REST assetType: 1 Stock, 2 Pre-IPO, 3 ETF (52w fields: Stock/ETF only)
+            return self.abstain("ETF/Pre-IPO: no single-company 52-week fundamentals")
         si = asset.bstock.dyn.get("stockInfo") or {}
         p = asset.bstock.ref_price
         hi, lo, pe, roe = _f(si.get("priceHigh52w")), _f(si.get("priceLow52w")), _f(si.get("priceToEarnings")), _f(si.get("returnOnEquity"))
