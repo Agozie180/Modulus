@@ -1,0 +1,12 @@
+events 130 | weekends with >=10 tokens: 4
+threshold  n   continue%  follow-pnl(bps, Monday session, pre-cost)
+   0.3%  108    61.1%     +51.2
+   0.5%   97    59.8%     +49.4
+   1.0%   68    54.4%     +77.0
+   2.0%   34    52.9%     +91.4
+per weekend (|idio|>0.5%):
+  2026-09-11  n=15  continue 47%
+  2026-09-18  n=32  continue 56%
+  2026-09-25  n=25  continue 76%
+  2026-10-02  n=25  continue 56%
+raw (not market-neutral) continuation: 60.6% n=99 - fading the weekend lost -69 bps
