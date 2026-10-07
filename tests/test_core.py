@@ -72,3 +72,45 @@ def test_sizing_respects_caps_and_confidence():
     assert size_usd(0.50, 0, 100, 0, 0, lim) == 0
     assert size_usd(0.62, 0, 100, 0, 0, lim) == 5.0
     assert size_usd(0.62, 0, 100, 19.5, 0, lim) == 0
+
+
+def test_two_nights_clock():
+    from datetime import datetime, timezone
+    from modulus.clock import regime
+    assert regime(datetime(2026, 10, 10, 12, tzinfo=timezone.utc)) == "dark_weekend"   # Saturday
+    assert regime(datetime(2026, 10, 11, 23, tzinfo=timezone.utc)) == "dawn"           # Sunday after CME reopen
+    assert regime(datetime(2026, 10, 7, 15, tzinfo=timezone.utc)) == "regular"
+    assert regime(datetime(2026, 10, 7, 2, tzinfo=timezone.utc)) == "weeknight"
+
+
+def test_night_watchman_fades_weekend_and_follows_weeknight():
+    from datetime import datetime, timezone
+    from modulus.elders.gap import GapElder, last_us_close_ms
+    a = Asset("XYZ", 1); a.legs["bstock"] = Leg("bstock", "XYZB", "0x0", 1.0)
+    sat = datetime(2026, 10, 10, 12, tzinfo=timezone.utc)
+    t0 = last_us_close_ms(sat)
+    candles = [[t0, 0, 0, 0, "100"], [t0 + 3600_000 * 10, 0, 0, 0, "97"]]
+    o = GapElder().opine(a, {"now": sat, "spot": {"XYZB": candles}, "market_drift": 0.0})
+    assert o.direction == 1 and o.p > 0.6          # weekend dump -> buy the overshoot
+    wed = datetime(2026, 10, 8, 3, tzinfo=timezone.utc)
+    t1 = last_us_close_ms(wed)
+    o2 = GapElder().opine(a, {"now": wed, "spot": {"XYZB": [[t1, 0, 0, 0, "100"], [t1 + 3600_000 * 6, 0, 0, 0, "97"]]}, "market_drift": 0.0})
+    assert o2.direction == -1                      # weeknight dump is informed -> lean with it
+
+
+def test_oracle_merkle_commit_is_provable():
+    from modulus import oracle
+    fc = {"NVDA": {"gap_hat_bps": 120.0, "p_up": 0.7}, "TSLA": {"gap_hat_bps": -80.0, "p_up": 0.38}, "MU": {"gap_hat_bps": 5.0, "p_up": 0.5}}
+    root, levels = oracle.merkle([oracle.leaf("2026-10-09", t, fc[t]) for t in sorted(fc)])
+    for i, t in enumerate(sorted(fc)):
+        assert oracle.verify(oracle.leaf("2026-10-09", t, fc[t]), oracle.proof(levels, i), root)
+    tampered = dict(fc["TSLA"], p_up=0.9)
+    assert not oracle.verify(oracle.leaf("2026-10-09", "TSLA", tampered), oracle.proof(levels, 2), root)
+
+
+def test_oracle_abstains_on_small_moves():
+    from modulus import oracle
+    model = {"b_mkt": 0.8, "b_idio": 0.5, "table": [(0.0, 0.5), (0.01, 0.7)]}
+    assert oracle.p_up(0.002, model) == 0.5
+    assert oracle.p_up(0.015, model) == 0.7
+    assert abs(oracle.p_up(-0.015, model) - 0.3) < 1e-9
