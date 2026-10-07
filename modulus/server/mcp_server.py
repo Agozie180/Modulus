@@ -13,7 +13,10 @@ Run:  pip install mcp && python -m modulus.server.mcp_server
 Register in Claude Code: claude mcp add modulus -- python -m modulus.server.mcp_server
 """
 from __future__ import annotations
-from mcp.server.fastmcp import FastMCP
+try:                                    # mcp 1.x
+    from mcp.server.fastmcp import FastMCP
+except ModuleNotFoundError:             # mcp 2.x renamed FastMCP -> MCPServer
+    from mcp.server.mcpserver import MCPServer as FastMCP
 from ..agent import Modulus
 from ..clients import public_bapi as pub
 
@@ -63,10 +66,6 @@ def modulus_market_clock() -> dict:
     return pub.market_status()
 
 
-if __name__ == "__main__":
-    mcp.run()
-
-
 @mcp.tool()
 def modulus_monday_oracle(limit: int = 15) -> dict:
     """Forecast where each real US stock opens next (P(up), expected gap) from the 24/7 bStock weekend market, plus the Oracle's out-of-sample track record."""
@@ -82,3 +81,7 @@ def modulus_two_nights() -> dict:
     """Dark weekend (crowd overshoots, fade), dawn (futures back), weeknight (moves informed, follow) or regular; plus the execution policy."""
     from ..clock import execution_policy
     return execution_policy()
+
+
+if __name__ == "__main__":
+    mcp.run()
