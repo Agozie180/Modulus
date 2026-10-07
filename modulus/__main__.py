@@ -26,7 +26,7 @@ def main(argv=None):
         if a.json:
             print(json.dumps({"session": res["session"], "verdicts": [v.as_dict() for v in res["verdicts"]]}, default=str))
             return
-        print(f"\nSession: {res['session']} | bStock market drift since Fri close: {res['market_drift']:+.2%}\n")
+        print(f"\nSession: {res['session']} | bStock market drift since the last US close: {res['market_drift']:+.2%}\n")
         for v in res["verdicts"][: (len(res["verdicts"]) if a.cmd == "explain" else 15)]:
             print(f"{v.action:5} {v.symbol:8} conf {v.confidence:.0%} dissent {v.dissent:.0%}  {v.headline}")
             if a.cmd == "explain":
@@ -52,13 +52,20 @@ def oracle_cmd(a):
     if sub == "backtest":
         print(json.dumps(oracle.backtest(), indent=2)); return
     if sub == "grade":
-        print(json.dumps(oracle.grade(a.week), indent=2)); return
+        s = oracle.grade(a.week)
+        print(json.dumps(s, indent=2))
+        if s.get("n"):
+            print(f"WeekendOracle.grade({a.week.replace('-', '')}, {round(s['hit'] * 1e4)}, {round(s['brier'] * 1e4)})")
+        return
     if sub == "reveal":
         rec = json.load(open(f"oracle/{a.week}.json"))
         print(f"reveal({a.week.replace('-', '')}, 0x{rec['root']}, 0x{rec['salt']})"); return
     res = Modulus().scan(audit=False)
     fc = oracle.forecast(res["moves"])
     if sub == "commit":
+        if res["regime"] != "dark_weekend":
+            print("WARNING: outside the on-chain commit window (Fri 20:00 - Sun 22:00 UTC). A mainnet WeekendOracle "
+                  "(enforceWindow=true) will revert; rehearse on a testnet deploy with enforceWindow=false.")
         rec = oracle.commit(fc)
         print(f"week {rec['week']} | {len(fc)} forecasts | commitment 0x{rec['commitment']}")
         print(f"WeekendOracle.commit({rec['week'].replace('-', '')}, 0x{rec['commitment']}, {len(fc)})")
