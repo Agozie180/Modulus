@@ -103,7 +103,7 @@ class Modulus:
             usd = round(usd * res["policy"]["size_scale"], 2)          # thin weekend books -> smaller clips
             if usd < 1:
                 continue
-            r = self.executor.execute(v, usd, by_ticker[v.ticker].bstock.token_price or price)
+            r = self.executor.execute(v, usd, by_ticker[v.ticker].bstock.token_price or price, policy=res["policy"])
             r["policy"] = res["policy"]
             self.ledger.record_order(vid, r.get("mode", self.s.executor), v.action, usd, r.get("status"), r.get("orderId", ""), r)
             acted.append((v, usd, r))
@@ -130,8 +130,14 @@ class Modulus:
                 "elder_skill": {e: round(skill(p), 3) for e, p in self.ledger.elder_pairs().items()}}
 
     def daemon(self, nav_usd=50.0):
+        from .clock import regime
         while True:
             session, _ = session_now()
+            if self.s.executor == "baw" and regime() == "regular":
+                try:   # weekend fade limits must not fill on Monday's informed tape
+                    self.executor.reconcile_limits(cancel_working=True)
+                except Exception:
+                    pass
             self.resolve()
             self.run(nav_usd)
             time.sleep(900 if session in ("premarket", "regular", "postmarket") else 3600)
