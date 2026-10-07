@@ -8,3 +8,10 @@ __pycache__/
 data/hist_1h.json
 data/snapshot.json
 data/scan_live.json
+research/data24/spot_1h.json
+research/data24/yahoo_1h.json
+research/data24/yahoo_1d.json
+oracle/*.json
+!oracle/scoreboard.json
+research/data24/oracle_rows.json
+research/data24/tradable_rows.json
