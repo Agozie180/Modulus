@@ -6,6 +6,8 @@ Tools
   modulus_twins(ticker)       -> bStock vs Ondo vs xStocks per-share prices, broken-feed flags
   modulus_calibration()       -> Brier, ECE, reliability table: how honest the confidence is
   modulus_market_clock()      -> US session state + next open/close (from the RWA layer)
+  modulus_monday_oracle()     -> sealed-style forecast of the next US open for every bStock + out-of-sample record
+  modulus_two_nights()        -> which kind of night it is and how the agent must trade right now
 
 Run:  pip install mcp && python -m modulus.server.mcp_server
 Register in Claude Code: claude mcp add modulus -- python -m modulus.server.mcp_server
@@ -63,3 +65,20 @@ def modulus_market_clock() -> dict:
 
 if __name__ == "__main__":
     mcp.run()
+
+
+@mcp.tool()
+def modulus_monday_oracle(limit: int = 15) -> dict:
+    """Forecast where each real US stock opens next (P(up), expected gap) from the 24/7 bStock weekend market, plus the Oracle's out-of-sample track record."""
+    from .. import oracle
+    res = m().scan(audit=False)
+    fc = oracle.forecast(res["moves"])
+    top = dict(sorted(fc.items(), key=lambda kv: -abs(kv[1]["p_up"] - 0.5))[:limit])
+    return {"regime": res["regime"], "forecasts": top, "track_record": oracle.backtest()}
+
+
+@mcp.tool()
+def modulus_two_nights() -> dict:
+    """Dark weekend (crowd overshoots, fade), dawn (futures back), weeknight (moves informed, follow) or regular; plus the execution policy."""
+    from ..clock import execution_policy
+    return execution_policy()
