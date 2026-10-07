@@ -49,8 +49,20 @@ class WhaleElder(Elder):
         top10 = _f(dyn, "top10HoldersPercentage")
         ev.update(smart_money_pct=sm, kol_pct=kol, top10_pct=top10, holders=dyn.get("holders"))
         # whales confirmed by a tracked smart-money buy/sell in the last window (baw tracker), if wired
+        # Binance Spot aggressor flow since the last US close: taker-buy share of quote volume.
+        # Research: top-quintile weekend taker-buy share -> +33 bps idio Monday gap, bottom -> -18 bps.
+        k = ctx.get("spot", {}).get(leg.symbol) or []
+        if k:
+            from .gap import last_us_close_ms
+            since = [c for c in k if int(c[0]) > last_us_close_ms(ctx["now"])]
+            qv = sum(float(c[7]) for c in since); tb = sum(float(c[10]) for c in since)
+            if qv > 5000:
+                aggr = 2 * tb / qv - 1
+                ev["spot_aggressor"] = round(aggr, 3); ev["spot_quote_vol"] = round(qv)
+                score += 0.25 * aggr
         sm_flow = ctx.get("smart_money_flow", {}).get(leg.address.lower(), 0)
         score += 0.15 * max(-1, min(1, sm_flow))
+        score = max(-1.0, min(1.0, score))
         if abs(score) < 0.08:
             return self.abstain(f"balanced flow ({score:+.2f})", **ev)
         p = clamp(0.5 + abs(score) * 0.35, 0.5, 0.68)
