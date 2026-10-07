@@ -68,7 +68,7 @@ liquidity clock, **limit orders only** in thin hours, clip size × √depth, tig
    probability, shrunk toward 0.5, capped at 80%. It's seeded with 259 historical dark-weekend signals (claimed 65.9%, observed 65.6%, Brier 0.2255, ECE 0.28%) and refit on every resolved verdict.
    Brier score, ECE and the reliability table are public (`python -m modulus calibration`, MCP tool `modulus_calibration`).
 6. **Sizing** ([`sizing.py`](modulus/sizing.py)): quarter-Kelly on the calibrated probability × (1 − dissent),
-   then $5 per trade, $20 per day and 20% per ticker caps. Agentic Wallet's own daily quota is the outer wall.
+   then $5 per trade, $20 per day (resting limit orders included) and 20% per ticker caps. bStocks are whitelisted and do **not** consume the Agentic Wallet `dailyLimit`, so these caps are the binding guardrail.
 
 Every verdict lands in SQLite with each elder's vote. The next session scores it, and the scores
 feed back into calibration and elder weights. That makes Modulus a **self-auditing** agent.
@@ -79,14 +79,15 @@ feed back into calibration and elder weights. That makes Modulus a **self-auditi
 |---|---|---|
 | RWA Data API | 3-platform universe (bStocks + Ondo + xStocks), per-share price, status / next open, profile + attestations, sector tabs | `clients/binance_web3.py`, `universe.py` |
 | Market API | candles, price-info, holders, top traders, top liquidity, trades, address tracker | `binance_web3.py`, Whale Watcher |
-| Trading API | quote, approve (vendor-aware), swap, **RFQ** EIP-712 order submit + status for equity tokens | `executor.py` |
-| Transaction API | **simulate before every trade**, gas price, broadcast with MEV protection | `executor.py` (dry-run is the default) |
+| Trading API | quote (bStocks return a LiquidMesh SWAP **and** a PcsXRfq RFQ route; best net-out, firm RFQ preferred within 10 bps), on-chain allowance check, approve only when short + re-quote (30 s quote TTL), swap with `priceImpactProtectionPercent`, RFQ EIP-712 submit + poll to FILLED/FAILED/EXPIRED/CANCELLED, 40369 market-closed → DEFERRED | `executor.py` |
+| Transaction API | **simulate** (`evmTx{from,to,value,data}`) before every raw swap, gas limit, broadcast with MEV protection, tx-detail polling | `executor.py` (dry-run is the default) |
 | Wallet API / Address Portfolio | balances, tx detail polling, per-token PnL | `binance_web3.py`, ledger resolve |
 | DeFi API | idle-USDT parking candidates between trades (investment list / deposit calldata) | `binance_web3.py` |
-| b402 Payments | paid `/verdict/{ticker}`: 402 → verify → settle | `server/x402_api.py` |
-| **Agentic Wallet / Wallet Skills** | `market-order` quote/swap/poll, `limit-order`, `wallet settings` quota, `tracker`, `leaderboard analyze`, `signal`, `x402-payment`, `query-token-audit`, `binance-tokenized-securities-info` | `clients/baw.py`, executor `baw` mode |
-| **BNB Agent Studio** | ERC-8004 identity, ERC-8183 jobs, x402 face, self-refill budget | `agent-studio/` |
-| MCP | 5 tools so any agent can ask the council | `server/mcp_server.py` |
+| b402 Payments | x402 **V2** paid `/verdict/{ticker}`: 402 + `PAYMENT-REQUIRED` → `PAYMENT-SIGNATURE` → B402 `verify` → council runs → `settle` → `PAYMENT-RESPONSE`; offers U / USD1 (EIP-3009) and USDT (Permit2) copied from `/supported`; Bazaar metadata for discovery | `server/x402_api.py` |
+| **Agentic Wallet / Wallet Skills** | preflight (`cli-check`, `wallet status`, `settings`), `tx-lock`, `market-order` quote/swap/poll, **`limit-order` buy/sell for thin weekend books** (+ reconcile/cancel at the US open), `x402-payment preview/sign`, `tracker`, `leaderboard analyze`, `signal`, `x402-payment`, `query-token-audit`, `binance-tokenized-securities-info` | `clients/baw.py`, executor `baw` mode |
+| **BNB Agent Studio** | Seller scaffold (studio-cli 0.0.14): ERC-8004 identity, ERC-8183 negotiate/notify_funded jobs, X402 face via B402; Modulus plugs in through the `RunWork` hook in `modulusWork.ts` | `agent-studio/` |
+| MCP | 7 tools (verdict, scan, twins, calibration, market clock, Monday Oracle, Two Nights) so any agent can ask the council. (Binance's own Web3 MCP server is still "coming soon"; Modulus ships its own.) | `server/mcp_server.py` |
+| BSC smart contract | `WeekendOracle.sol`: commit-reveal of Monday forecasts, window enforced on-chain, Merkle proofs, one-shot grade | `contracts/` |
 | BNB Chain | PancakeSwap / BSC tokenized-equity liquidity via the aggregator | executor |
 
 ## Run it (60 seconds, no keys)
@@ -96,7 +97,8 @@ git clone <repo> && cd modulus
 python -m modulus scan                 # live council on all 87 bStocks, read-only public data
 python -m modulus explain NVDA         # every elder's reasoning
 python -m modulus calibration          # Brier, ECE, reliability table
-python -m pytest -q                    # 8 offline tests
+python -m pytest -q                    # 50 offline tests (docs-compliance, executor, x402, MCP)
+cd contracts && npm install && npm test   # 20 EVM tests: compile, commit-reveal, Python Merkle proofs on-chain
 ```
 
 With keys (`cp .env.example .env`):
@@ -112,7 +114,7 @@ uvicorn modulus.server.x402_api:app --port 8402 # paid verdicts
 ## Safety by design
 * Simulates before it executes, and dry-run is the default. Live trades are capped at $5 each and $20 a day.
 * Fail-closed: if the audit is unreachable, a feed is stale, prices diverge or the market is paused, it does nothing.
-* Conditional orders are never silently turned into market orders (Agentic Wallet skill rule).
+* Conditional orders are never silently turned into market orders (Agentic Wallet skill rule); a live run never silently falls back to paper trading.
 * CLI and API errors are relayed verbatim. On-chain token names are treated as untrusted (prompt-injection defense).
 * Not investment advice. Tokenized securities can be halted and carry slippage and contract risk.
 
@@ -122,8 +124,9 @@ modulus/            agent, council, calibration, sizing, ledger, executor
 modulus/elders/     gap, whale, arbiter, value, sentinel
 modulus/clients/    binance_web3 (signed, all modules), public_bapi (keyless), baw (Agentic Wallet)
 modulus/server/     mcp_server, x402_api (+ internal core for Agent Studio)
-agent-studio/       Studio prompt + sellerCore.ts
-research/           weekend_study.py, fetch_history.py, RESULTS.txt
+agent-studio/       Studio prompt + modulusWork.ts (RunWork hook)
+contracts/          WeekendOracle.sol (+ foundry.toml at repo root)
+research/           FINDINGS.md, 24/7 Spot study scripts, charts, v1 weekend_study.py
 docs/               DX report draft, demo script, submission checklist
 ```
 Apache-2.0 licensed.
