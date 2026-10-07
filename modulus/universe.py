@@ -31,7 +31,7 @@ class Leg:
 @dataclass
 class Asset:
     ticker: str
-    asset_type: int                      # 1 stock, 3 ETF
+    asset_type: int                      # REST assetType: 1 Stock, 2 Pre-IPO, 3 ETF
     legs: dict[str, Leg] = field(default_factory=dict)
 
     @property
