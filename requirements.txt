@@ -1,0 +1,7 @@
+# core runs on the standard library; these unlock live execution and servers
+eth-account>=0.13
+web3>=7.0
+fastapi>=0.110
+uvicorn>=0.29
+mcp>=1.2
+pytest>=8.0
