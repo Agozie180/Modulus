@@ -1,0 +1,40 @@
+{
+ "n": 858,
+ "hit": 0.535,
+ "brier": 0.2486,
+ "brier_coinflip": 0.25,
+ "mae_bps": 224.3,
+ "mae_no_change_bps": 228.7,
+ "error_cut": 0.0191,
+ "weekends": 17,
+ "method": "leave-one-weekend-out",
+ "by_conviction": {
+  ">=25bps": {
+   "n": 672,
+   "hit": 0.5729,
+   "brier": 0.2482,
+   "brier_coinflip": 0.25,
+   "mae_bps": 240.6,
+   "mae_no_change_bps": 247.1,
+   "error_cut": 0.0265
+  },
+  ">=50bps": {
+   "n": 501,
+   "hit": 0.6168,
+   "brier": 0.2477,
+   "brier_coinflip": 0.25,
+   "mae_bps": 262.7,
+   "mae_no_change_bps": 274.1,
+   "error_cut": 0.0418
+  },
+  ">=100bps": {
+   "n": 262,
+   "hit": 0.7214,
+   "brier": 0.2226,
+   "brier_coinflip": 0.25,
+   "mae_bps": 334.7,
+   "mae_no_change_bps": 369.2,
+   "error_cut": 0.0934
+  }
+ }
+}
