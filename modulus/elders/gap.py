@@ -1,24 +1,32 @@
-"""The Night Watchman - weekend / overnight gap elder.
+"""The Night Watchman - knows which kind of night it is.
 
-Research (research/weekend_study.py, data Jun-Oct 2026, 87 bStocks):
-the market-neutral part of a bStock's weekend on-chain drift (Fri 20:00 UTC ->
-Mon 13:00 UTC) CONTINUED into Monday's regular session 59.8% of the time
-(n=97, |drift|>0.5%), +49 bps average. The chain is not noise while Wall
-Street sleeps; it is early price discovery. So this elder follows the
-idiosyncratic drift - and never claims more than the evidence supports.
+v1 of Modulus believed weekend drift CONTINUES (59.8%, 4 weekends of thin on-chain DEX prints).
+More data killed that idea. On Binance Spot (the deepest bStock venue), 17 weekends, 858
+stock-weekends, the truth is subtler and more useful:
+
+  * The weekend token gets Monday's DIRECTION right (market level 13/17 weekends, corr 0.60)
+    but its SIZE wrong: the real Monday gap is only ~0.52x the token's idiosyncratic weekend move.
+  * So big idiosyncratic weekend moves OVERSHOOT. Fading |move| > 1% at Sunday 21:00 UTC won
+    66% to Monday's open (+103 bps for 1-2%, +164 bps beyond 2%; 13 of 14 weekends positive).
+  * On WEEKNIGHTS the opposite holds: moves are informed, fading them lost ~40 bps, so we follow
+    (weakly).
+
+Spot only: fading a weekend dump = BUY; fading a weekend pump = SELL/trim (never a short).
 """
 from __future__ import annotations
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from .base import Elder, Opinion, clamp
-from ..clients import public_bapi as pub
+from ..clock import regime
+from ..clients import spot
 
-BASE_RATE = 0.598   # measured continuation rate (n=97)
-MIN_DRIFT = 0.005
+# measured fade win-rates by |idiosyncratic weekend move| at Sunday 21:00 UTC
+FADE_P = [(0.02, 0.647), (0.01, 0.665)]
+WEEKNIGHT_FOLLOW_P = 0.53
+MIN_WEEKEND, MIN_WEEKNIGHT = 0.01, 0.01
 
 
 def last_us_close_ms(now: datetime) -> int:
-    """Open time of the 19:00 UTC hourly candle of the most recent completed US session (EDT close 20:00 UTC)."""
-    from datetime import timedelta
+    """Open time of the 19:00 UTC candle (closes 16:00 ET, EDT) of the latest completed US session."""
     d = now.astimezone(timezone.utc)
     c = d.replace(hour=19, minute=0, second=0, microsecond=0)
     if c + timedelta(hours=1) > d:
@@ -28,40 +36,44 @@ def last_us_close_ms(now: datetime) -> int:
     return int(c.timestamp() * 1000)
 
 
-def last_friday_close_ms(now: datetime) -> int:
-    from datetime import timedelta
-    d = now.astimezone(timezone.utc)
-    days_back = (d.weekday() - 4) % 7
-    fri = (d - timedelta(days=days_back)).replace(hour=19, minute=0, second=0, microsecond=0)
-    if fri > d:
-        fri -= timedelta(days=7)
-    return int(fri.timestamp() * 1000)
+def drift_since_close(candles, now) -> float | None:
+    px = {int(c[0]): float(c[4]) for c in candles}
+    if not px:
+        return None
+    anchor = max((t for t in px if t <= last_us_close_ms(now)), default=None)
+    return None if anchor is None else px[max(px)] / px[anchor] - 1
 
 
 class GapElder(Elder):
-    name, title, prior_weight = "gap", "The Night Watchman", 1.4
+    name, title, prior_weight = "gap", "The Night Watchman", 1.5
 
     def opine(self, asset, ctx) -> Opinion:
-        if ctx.get("session") == "regular":
-            return self.abstain("US market open: no stale reference to exploit.")
+        r = ctx.get("regime") or regime(ctx["now"])
+        if r == "regular":
+            return self.abstain("US market open: the real stock is pricing itself.")
         leg = asset.bstock
-        candles = ctx.get("klines", {}).get(leg.symbol)
+        candles = ctx.get("spot", {}).get(leg.symbol)
         if candles is None:
-            candles = pub.kline(leg.address, "1h", 200)
-        if not candles:
-            return self.abstain("no candles")
-        px = {int(c[0]): float(c[4]) for c in candles}
-        target = last_us_close_ms(ctx["now"])
-        anchor = max((t for t in px if t <= target), default=None)
-        if not anchor:
-            return self.abstain("no anchor candle")
-        drift = px[max(px)] / px[anchor] - 1
+            candles = spot.klines(leg.symbol, "1h", 120)
+        drift = drift_since_close(candles or [], ctx["now"])
+        if drift is None:
+            return self.abstain("no Binance Spot candles")
         idio = drift - ctx.get("market_drift", 0.0)
-        if abs(idio) < MIN_DRIFT:
-            return self.abstain(f"idiosyncratic drift {idio:+.2%} below {MIN_DRIFT:.1%}", drift=drift, idio=idio)
-        p = clamp(BASE_RATE + min(abs(idio), 0.03) * 0.5, 0.5, 0.66)
-        d = 1 if idio > 0 else -1
-        return Opinion(self.name, d, p,
-                       f"{leg.symbol} drifted {drift:+.2%} on-chain since the last US close "
-                       f"({idio:+.2%} vs the bStock market). Off-hours drift continued 60% of the time in our backtest.",
-                       {"drift": round(drift, 5), "idio": round(idio, 5), "base_rate": BASE_RATE})
+        ev = {"drift": round(drift, 5), "idio": round(idio, 5), "regime": r}
+        if r in ("dark_weekend", "dawn"):
+            if abs(idio) < MIN_WEEKEND:
+                return self.abstain(f"weekend idio move {idio:+.2%} is inside the noise band", **ev)
+            p = next(p for th, p in FADE_P if abs(idio) >= th)
+            if r == "dawn":            # futures are back: part of the overshoot is already corrected
+                p = 0.5 + (p - 0.5) * 0.6
+            d = -1 if idio > 0 else 1
+            verb = "dumped" if idio < 0 else "pumped"
+            return Opinion(self.name, d, clamp(p, 0.5, 0.68),
+                           f"{leg.symbol} {verb} {idio:+.2%} vs the bStock market while Wall Street was dark. "
+                           f"Weekend crowds overshoot: Monday kept only ~half of moves like this, and fading them won "
+                           f"{p:.0%} across 14 weekends.", ev | {"study_p": p, "mode": "fade_overshoot"})
+        if abs(idio) < MIN_WEEKNIGHT:
+            return self.abstain(f"weeknight idio move {idio:+.2%} too small", **ev)
+        return Opinion(self.name, 1 if idio > 0 else -1, WEEKNIGHT_FOLLOW_P,
+                       f"{leg.symbol} moved {idio:+.2%} overnight with futures and Asia trading: weeknight moves are informed, "
+                       f"so I lean with it (weakly).", ev | {"mode": "follow_informed"})
