@@ -3,5 +3,5 @@ eth-account>=0.13
 web3>=7.0
 fastapi>=0.110
 uvicorn>=0.29
-mcp>=1.2
+mcp>=1.2  # 1.x (FastMCP) and 2.x (MCPServer) both supported
 pytest>=8.0
