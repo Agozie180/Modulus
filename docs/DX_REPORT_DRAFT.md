@@ -71,7 +71,7 @@
 - A WebSocket for RWA status changes (paused, limited, open) and next-open events.
 - Historical reference price series, and kline history beyond ~25 days.
 - Token audit coverage for RWA issuers (bStocks, Ondo, xStocks).
-- An official Python SDK with signing, plus a Postman / Bruno collection.
+- [CORRECTED] A Python SDK (`pip install binance-web3-wallet`) and a Postman pre-request signing script do exist (SDKs & Tools, Authentication), but every docs page renders empty to curl/static fetchers (AWS WAF challenge, HTTP 202, 0 bytes). We only found them inside llms-full.txt. Make the .md pages fetchable.
 
 ## Added during the 24/7 deep dive [VERIFY + rewrite in your own words]
 - `api.binance.com/api/v3/klines` refused our server ("Service unavailable from a restricted location"), but the public
@@ -83,3 +83,13 @@
   field table does not describe.
 - The on-chain DEX kline endpoint omits hours with no trades, so a naive weekend study on it looks like 4 usable weekends;
   the Spot order book gave us 17. Our first conclusion (weekend drift continues) flipped once we had the deeper data.
+
+## Found while reading every docs page end to end [VERIFY + rewrite]
+- B402 returns success as code "000000000" while every other module uses 0, and B402 bodies need an outer {"body": ...} envelope. Easy to miss; our first client rejected successful settlements.
+- Transaction API simulate takes evmTx{from,to,value,data}; we first sent a different shape and got 40001 on every dry run.
+- bStock quotes return both a SWAP route and an RFQ route; the RFQ typedDataToSign is documented as "hex string (or JSON-encoded string)" with a 0x1901 example. One canonical format would help.
+- The /swap rfq object: one page lists orderId, the OpenAPI schema does not.
+- quoteId lives 30 s, but an ERC-20 approval confirmation can take longer, so the docs should say "re-quote after approving".
+- Agentic Wallet: bStocks do not consume dailyLimit (good), but whether bStocks accept limit orders, and the baw exit codes, are not documented.
+- Studio: the generated sellerCore.ts must export SellerCore/RunWork; the integration seam (RunWork) is not described for non-LLM work.
+- Solidity: we named a mapping `weeks` (a reserved time unit). Our fault, but a lint step in Studio templates would catch it.
