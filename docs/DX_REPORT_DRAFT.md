@@ -72,3 +72,14 @@
 - Historical reference price series, and kline history beyond ~25 days.
 - Token audit coverage for RWA issuers (bStocks, Ondo, xStocks).
 - An official Python SDK with signing, plus a Postman / Bruno collection.
+
+## Added during the 24/7 deep dive [VERIFY + rewrite in your own words]
+- `api.binance.com/api/v3/klines` refused our server ("Service unavailable from a restricted location"), but the public
+  market-data mirror `data-api.binance.vision` served the same bStock klines (e.g. `NVDABUSDT`). Nothing in the bStock or
+  Web3 docs points builders to the mirror; we found it by trial.
+- The RWA list carries a `cs` field (e.g. `MUBUSDT`): the Binance Spot pair for the token. It is undocumented in the skill,
+  and it is the key that joins on-chain data to the deepest 24/7 order book. Please document it.
+- The market-status endpoint returns an `offhours` object (Sat 00:06 UTC to Sun 23:55 UTC in our sample) that the skill's
+  field table does not describe.
+- The on-chain DEX kline endpoint omits hours with no trades, so a naive weekend study on it looks like 4 usable weekends;
+  the Spot order book gave us 17. Our first conclusion (weekend drift continues) flipped once we had the deeper data.
