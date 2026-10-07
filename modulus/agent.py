@@ -29,25 +29,23 @@ def session_now() -> tuple[str, dict]:
     return (ms or "unknown"), st
 
 
-def seed_pairs(path="data/weekend_events.json"):
-    """Backtest pairs for the Night Watchman so calibration is not blind on day one."""
+def seed_pairs(path="research/data24/tradable_rows.json"):
+    """Out-of-sample-style seed for calibration: every historical dark-weekend signal the Night
+    Watchman would have raised (Binance Spot, Sunday 21:00 UTC, market-neutral, |move|>1%),
+    with the probability it would have claimed and whether fading to Monday's open won."""
     try:
-        ev = json.load(open(path))
+        from .oracle import _load
+        rows = _load(path)
     except FileNotFoundError:
         return []
-    by = {}
-    for s, d, a, b in ev:
-        by.setdefault(d, []).append((a, b))
+    from .elders.gap import FADE_P
     pairs = []
-    for d, v in by.items():
-        if len(v) < 10:
+    for r in rows:
+        w = r["w"]
+        if abs(w) < 0.01:
             continue
-        ma, mb = statistics.mean(x for x, _ in v), statistics.mean(y for _, y in v)
-        for a, b in v:
-            idio, nxt = a - ma, b - mb
-            if abs(idio) >= 0.005:
-                p = min(0.66, 0.598 + min(abs(idio), 0.03) * 0.5)
-                pairs.append((p, int(idio * nxt > 0)))
+        p = next(p for th, p in FADE_P if abs(w) >= th)
+        pairs.append((p, int((r["mo"] < 0) if w > 0 else (r["mo"] > 0))))
     return pairs
 
 
@@ -65,13 +63,17 @@ class Modulus:
         session, status = session_now()
         assets = load_universe(tickers=tickers)
         legs = [a.bstock for a in assets]
-        klines = dict(zip([l.symbol for l in legs], pub.many(lambda l: pub.kline(l.address, "1h", 200), legs)))
+        from .clients import spot
+        from .clock import regime, execution_policy
+        klines = dict(zip([l.symbol for l in legs], pub.many(lambda l: spot.klines(l.symbol, "1h", 120), legs)))
         flow = dict(zip([l.symbol for l in legs], pub.many(lambda l: pub.token_dynamic(l.address), legs)))
-        ctx = {"now": datetime.now(timezone.utc), "session": session, "klines": klines, "flow": flow, "audit": audit}
+        now = datetime.now(timezone.utc)
+        ctx = {"now": now, "session": session, "regime": regime(now), "policy": execution_policy(now),
+               "spot": klines, "klines": klines, "flow": flow, "audit": audit}
         # market drift = median bStock drift since anchor, so the Night Watchman trades idiosyncratic moves only
         from .elders.gap import last_us_close_ms
         anchor = last_us_close_ms(ctx["now"])
-        drifts = []
+        drifts, moves = [], {}
         for l in legs:
             k = klines.get(l.symbol)
             if isinstance(k, list) and k:
@@ -79,11 +81,13 @@ class Modulus:
                 base = max((t for t in px if t <= anchor), default=None)
                 if base:
                     drifts.append(px[max(px)] / px[base] - 1)
+                    moves[next(a.ticker for a in assets if a.bstock is l)] = drifts[-1]
         ctx["market_drift"] = statistics.median(drifts) if drifts else 0.0
         verdicts = [self.council.deliberate(a, ctx) for a in assets]
         order = {"BUY": 0, "SELL": 1, "HOLD": 2, "VETO": 3}
         verdicts.sort(key=lambda v: (order[v.action], -v.confidence))
-        return {"session": session, "market_status": status, "market_drift": ctx["market_drift"],
+        return {"session": session, "regime": ctx["regime"], "policy": ctx["policy"],
+                "market_status": status, "market_drift": ctx["market_drift"], "moves": moves,
                 "assets": assets, "verdicts": verdicts}
 
     def run(self, nav_usd=50.0, tickers=None):
@@ -96,7 +100,11 @@ class Modulus:
             if v.action not in ("BUY", "SELL"):
                 continue
             usd = size_usd(v.confidence, v.dissent, nav_usd, self.ledger.spent_today(), 0.0, self.s.risk)
+            usd = round(usd * res["policy"]["size_scale"], 2)          # thin weekend books -> smaller clips
+            if usd < 1:
+                continue
             r = self.executor.execute(v, usd, by_ticker[v.ticker].bstock.token_price or price)
+            r["policy"] = res["policy"]
             self.ledger.record_order(vid, r.get("mode", self.s.executor), v.action, usd, r.get("status"), r.get("orderId", ""), r)
             acted.append((v, usd, r))
         return res, acted
