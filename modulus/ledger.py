@@ -40,7 +40,7 @@ class Ledger:
         self.db.commit()
 
     def spent_today(self) -> float:
-        r = self.db.execute("select coalesce(sum(usd),0) from orders where ts>? and status in ('FINISHED','FILLED','SUBMITTED')",
+        r = self.db.execute("select coalesce(sum(usd),0) from orders where ts>? and status in ('FINISHED','FILLED','SUBMITTED','WORKING','TRIGGERED','PENDING','PAPER','SIMULATED')",
                             (int(time.time()) - 86400,)).fetchone()
         return float(r[0])
 
