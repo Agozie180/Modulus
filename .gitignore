@@ -15,3 +15,7 @@ oracle/*.json
 !oracle/scoreboard.json
 research/data24/oracle_rows.json
 research/data24/tradable_rows.json
+node_modules/
+contracts/node_modules
+out/
+cache/
