@@ -1,42 +1,60 @@
 # Modulus
 
-**When Wall Street sleeps, five AI elders trade the gap, and they only bet what they've earned.**
+**Wall Street is closed 65 hours a week. bStocks aren't. Modulus is the AI that learned what that market knows, trades it, and seals its Monday forecast on-chain before the bell.**
 
-Modulus is an autonomous agent for **bStocks on BNB Chain**. Every hour it convenes a Council of
-five specialist elders on all 87 bStocks. They vote. A Sentinel can veto. The council's raw
-enthusiasm is then **calibrated** against what actually happened before, so "60% sure" means
-right about 60% of the time. Only then does it size a small trade and execute through the
-**Binance Agentic Wallet**, simulating first. Other agents can buy its verdicts for $0.01 over
-**x402 / B402**, through its **BNB Agent Studio** identity (ERC-8004).
+> **10-second version:** On weekends only the token trades, on 10× thinner books. The crowd gets Monday's
+> *direction* right but its *size* wrong, it overshoots ~2×. Modulus' Council of Elders buys the weekend panic,
+> trims the euphoria, and commits a Merkle-sealed forecast of Monday's open to BNB Chain that reality grades at 9:30 ET.
 
-> 10-second version: *Wall Street closes, but bStocks keep trading. Modulus found that the weekend
-> on-chain move predicts Monday (59.8%, n=97). Five elders vote, a Sentinel can veto, and calibration
-> keeps the bets honest.*
+![discovery curve](docs/img/discovery_curve.png)
 
----
+## The finding (858 stock-weekends, 17 weekends, all 87 bStocks)
 
-## Why it matters (the finding)
+Full write-up: [`research/FINDINGS.md`](research/FINDINGS.md). Data: Binance Spot 1h (24/7) + the real US share.
 
-From 1-hour on-chain candles for all 87 bStocks (Jun 24 to Oct 7, 2026), [`research/weekend_study.py`](research/weekend_study.py):
+| | |
+|---|---|
+| Weekend share of hours / of volume | **30% / 8%** (Saturday $1.6k vs $16.4k per bStock-hour) |
+| Market-wide weekend move calls Monday's direction | **13 of 17 weekends** |
+| Real Monday gap ÷ token's stock-specific weekend move | **0.52×**, the crowd overshoots |
+| Fade a 1–2% weekend move (Sun 21:00 UTC → Mon open) | **66.5% win, +103 bps** (n=176) |
+| Fade a >2% weekend move | **64.7% win, +164 bps** (n=85), 13/14 weekends positive |
+| Same fade on *weeknights* | **−40 bps**: weeknight moves are informed |
+| Monday Oracle, out-of-sample, calls ≥1% | **72.1% right, Brier 0.223** (n=262) |
 
-| Weekend drift beyond the bStock market (abs) | Events | Continued into Monday's session | Avg follow PnL, pre-cost |
-|---|---|---|---|
-| > 0.3% | 108 | **61.1%** | +51 bps |
-| > 0.5% | 97 | **59.8%** | +49 bps |
-| > 1.0% | 68 | 54.4% | +77 bps |
-| > 2.0% | 34 | 52.9% | +91 bps |
+**Two kinds of night.** When futures and Asia trade, token moves carry information. When nothing else prices US
+stocks (Fri 20:00 → Sun 22:00 UTC), they carry emotion. Modulus knows which night it is.
 
-Fading the weekend (betting it reverts) **lost 69 bps**. The chain is early price discovery,
-not noise. But per weekend the hit rate swung from **47% to 76%**, with only 4 usable weekends.
-That's why Modulus caps confidence, needs a quorum and sizes with quarter-Kelly. We report the
-weakness on purpose.
+![two nights](docs/img/two_nights.png)
+
+**We were wrong first.** v1 claimed weekend drift *continues* (59.8%, 4 weekends of DEX prints). Seventeen
+weekends of order-book data overturned that. The old study stays in `research/weekend_study.py`. The
+calibration layer is why an agent can be wrong in public and still be trusted.
+
+## The Monday Oracle (on-chain, can't be faked)
+
+Every weekend, before 22:00 UTC Sunday, Modulus forecasts P(up) and the expected gap for every bStock, builds a
+**Merkle tree**, and commits `sha256(root‖salt)` to [`contracts/WeekendOracle.sol`](contracts/WeekendOracle.sol) on BSC.
+After Monday's open it reveals the root. Anyone can prove any single forecast, and the contract stores the grade
+(hit rate, Brier). A track record nobody, us included, can edit.
+
+```
+python -m modulus oracle forecast | commit | reveal --week 2026-10-09 | grade --week 2026-10-09 | backtest
+```
+
+## The Two Nights clock (how it trades)
+
+`python -m modulus clock` → regime (`dark_weekend`, `dawn`, `weeknight`, `regular`), depth factor from the
+liquidity clock, **limit orders only** in thin hours, clip size × √depth, tighter slippage (0.5%) on weekends.
+
+![liquidity clock](docs/img/liquidity_clock.png)
 
 ## The Council of Elders
 
 | Elder | What it watches | Data |
 |---|---|---|
-| **The Night Watchman** (gap) | Drift since the last US close, beyond the bStock market's own move. Follows it. | Market API candles / RWA kline |
-| **The Whale Watcher** (whale) | Buy vs sell flow 1h/4h/24h, smart-money and KOL holding share, Binance-wallet avg cost vs price, top-10 concentration, tracked smart-money trades | token dynamic, `baw tracker`, `baw leaderboard`, `baw signal` |
+| **The Night Watchman** (gap) | Knows which night it is. Dark weekend: **fades** stock-specific moves >1% (66% win). Weeknight: leans with them. | Binance Spot 24/7 klines + Two Nights clock |
+| **The Whale Watcher** (whale) | Spot taker-buy aggressor share since the close, on-chain buy vs sell flow 1h/4h/24h, smart-money and KOL holding share, Binance-wallet avg cost vs price, top-10 concentration, tracked smart-money trades | token dynamic, `baw tracker`, `baw leaderboard`, `baw signal` |
 | **The Arbiter** | The same company as **bStock vs Ondo vs xStocks**, per share (price / sharesMultiplier). Flags >15% gaps as broken feeds, not free money. | RWA Data API (3 platforms) |
 | **The Value Elder** | 52-week range position, P/E, ROE | RWA underlying-market / stockInfo |
 | **The Sentinel** | **Veto only.** Corporate actions (dividend, split, merger), earnings limits, paused markets, stale prices, oracle sanity, token audit (fail-closed) | RWA status, `query-token-audit` |
@@ -47,7 +65,7 @@ weakness on purpose.
 3. **Dissent** (the weight that disagrees) shrinks confidence.
 4. **Quorum**: two elders must agree. No trade on one voice.
 5. **Calibration** ([`calibration.py`](modulus/calibration.py)): isotonic map from raw to calibrated
-   probability, shrunk toward 0.5, capped at 80%. It's seeded with the backtest and refit on every resolved verdict.
+   probability, shrunk toward 0.5, capped at 80%. It's seeded with 259 historical dark-weekend signals (claimed 65.9%, observed 65.6%, Brier 0.2255, ECE 0.28%) and refit on every resolved verdict.
    Brier score, ECE and the reliability table are public (`python -m modulus calibration`, MCP tool `modulus_calibration`).
 6. **Sizing** ([`sizing.py`](modulus/sizing.py)): quarter-Kelly on the calibrated probability × (1 − dissent),
    then $5 per trade, $20 per day and 20% per ticker caps. Agentic Wallet's own daily quota is the outer wall.
