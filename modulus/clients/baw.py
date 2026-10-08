@@ -15,7 +15,7 @@ Every call appends --json. Envelope: {"success": true, "data": {...}} or
 {"success": false, "error": {"code": int, "name": str, "message": str}}. Errors are relayed verbatim.
 """
 from __future__ import annotations
-import base64, json, shutil, subprocess, time
+import base64, json, os, shutil, subprocess, time
 from ..config import BSC
 
 REQUIRED_CLI = "1.10.0"   # binance-agentic-wallet SKILL.md v1.12.0 -> requiredCliVersion
@@ -30,6 +30,10 @@ class BawError(RuntimeError):
 class Baw:
     def __init__(self, binary: str = "baw", timeout: int = 90):
         self.bin, self.timeout = binary, timeout
+        # npm installs the CLI on Windows as `baw.cmd` (plus `baw`/`baw.ps1`); a bare `subprocess.run(["baw", ...])`
+        # cannot launch a .cmd (CreateProcess only auto-appends .exe, ignoring PATHEXT) -> WinError 2.
+        # Resolve to the full path via PATHEXT so live execution works everywhere.
+        self._exe = shutil.which(binary) or binary if os.name == "nt" else binary
 
     @property
     def available(self) -> bool:
@@ -37,7 +41,7 @@ class Baw:
 
     # ------------------------------------------------------------------ core
     def run(self, *args: str, timeout: int | None = None) -> dict:
-        cmd = [self.bin, *[str(a) for a in args], "--json"]
+        cmd = [self._exe, *[str(a) for a in args], "--json"]
         p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout or self.timeout)
         out = (p.stdout or "").strip()
         try:
@@ -192,14 +196,23 @@ class Baw:
         return self.run("limit-order", "cancel", "--strategyId", str(strategy_id))
 
     # ------------------------------------------------------------------ whales / signals (binance-wallet-tracker, -leaderboard, -trading-signal)
+    # These are NOT core `baw` subcommands (baw: auth|wallet|approvals|market-order|limit-order|
+    # contract-call|sign-message|prediction|x402-payment|defi|skill-check|cli-check). `tracker`,
+    # `leaderboard` and `signal` are separate wallet-skills; they only resolve when those skills
+    # are installed. Callers (Executors/elders) must treat failure as "elder abstains" - never a crash.
     def tracker_group_create(self, name, chain: str = BSC):
+        """wallet-skill `binance-wallet-tracker` (not a core baw subcommand): may be unavailable unless installed."""
         return self.run("tracker", "group", "create", "-c", chain, "-n", name)
 
     def tracker_add(self, group_id, address, label, chain: str = BSC):
+        """wallet-skill `binance-wallet-tracker` (not a core baw subcommand): may be unavailable unless installed."""
         return self.run("tracker", "address", "add", "-c", chain, "-g", str(group_id), "-a", address, "--label", label)
 
     def tracker_tx(self, group_id=None, tag_type=None, trade_side=None, min_value=None, chain: str = BSC):
-        """Public mode (--tag-type smy|kol) needs no sign-in; --group-id needs a session. No pagination, no ca filter."""
+        """wallet-skill `binance-wallet-tracker` (not a core baw subcommand); may be unavailable unless installed.
+
+        Public mode (--tag-type smy|kol) needs no sign-in; --group-id needs a session. No pagination, no ca filter.
+        """
         a = ["tracker", "tx", "query", "-c", chain]
         a += ["--group-id", str(group_id)] if group_id is not None else ["--tag-type", tag_type or "smy"]
         if trade_side:
@@ -209,10 +222,15 @@ class Baw:
         return self.run(*a)
 
     def tracker_token(self, tag_type="smy", period="24h", chain: str = BSC):
+        """wallet-skill `binance-wallet-tracker` (not a core baw subcommand): may be unavailable unless installed."""
         return self.run("tracker", "token", "query", "-c", chain, "--tag-type", tag_type, "--period", period)
 
     def smart_money_flow(self, addresses: set[str], chain: str = BSC, tag_type="smy") -> dict:
-        """{token_address_lower: net in [-1,1]} = (buyUSD - sellUSD)/(buyUSD + sellUSD) over the public SMY tape."""
+        """wallet-skill `binance-wallet-tracker` (not a core baw subcommand): may be unavailable unless installed.
+
+        {token_address_lower: net in [-1,1]} = (buyUSD - sellUSD)/(buyUSD + sellUSD) over the public SMY tape.
+        Treat a missing skill / raised BawError as "elder abstains".
+        """
         rows = self.data(self.tracker_tx(tag_type=tag_type, chain=chain)) or []
         rows = rows if isinstance(rows, list) else (rows.get("list") or [])
         agg: dict[str, list[float]] = {}
@@ -229,9 +247,11 @@ class Baw:
         return {ca: (b - s) / (b + s) for ca, (b, s) in agg.items() if b + s > 0}
 
     def leaderboard_analyze(self, address, chain: str = BSC):
+        """wallet-skill `binance-wallet-leaderboard` (not a core baw subcommand): may be unavailable unless installed."""
         return self.run("leaderboard", "analyze", "-c", chain, "-a", address)
 
     def smart_money_signals(self, chain: str = BSC, time_range: str | None = None):
+        """wallet-skill `binance-wallet-trading-signal` (not a core baw subcommand): may be unavailable unless installed."""
         a = ["signal", "list", "-c", chain, "--source", "smart-money"]
         if time_range:
             a += ["--time-range", time_range]

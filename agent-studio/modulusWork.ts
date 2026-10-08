@@ -25,6 +25,20 @@ const CORE_TOKEN = process.env.MODULUS_CORE_TOKEN ?? ""; // optional shared secr
 const TICKER = /^[A-Z]{1,6}(?:\.[A-Z]{1,2})?$/;          // NVDA, BRK.B
 const CORE_TIMEOUT_MS = 90_000;
 
+// Fail loud instead of silently shipping a dead URL: the placeholder below is NOT a real host, and a
+// deployment that never set MODULUS_CORE_URL would otherwise answer every paid call with a 404/DNS
+// error. Bake the real public HTTPS origin in above (or set the env var) before deploy.
+function coreBase(): string {
+  if (!CORE || CORE.includes("REPLACE-ME")) {
+    throw new Error(
+      "modulusWork: MODULUS_CORE_URL is unset (still the REPLACE-ME placeholder). " +
+        "Set it to the deployed public HTTPS origin of `uvicorn modulus.server.x402_api:core` " +
+        "(e.g. https://<your-core-host>) before deploy, or via MODULUS_CORE_URL in `bag dev`.",
+    );
+  }
+  return CORE;
+}
+
 export function extractTicker(prompt: string): string | null {
   const raw = String(prompt ?? "").trim();
   const bare = raw.toUpperCase();
@@ -57,9 +71,10 @@ export function buildModulusRunWork(): RunWork {
       if (sessionId === "b402") return JSON.stringify({ agent: "modulus", error: msg });
       throw new Error(msg);
     }
+    const core = coreBase();
     const timeout = AbortSignal.timeout(CORE_TIMEOUT_MS);
     const signal = abortSignal ? AbortSignal.any([abortSignal, timeout]) : timeout;
-    const r = await fetch(`${CORE}/core/verdict/${encodeURIComponent(ticker)}`, {
+    const r = await fetch(`${core}/core/verdict/${encodeURIComponent(ticker)}`, {
       signal,
       headers: CORE_TOKEN ? { authorization: `Bearer ${CORE_TOKEN}` } : {},
     });

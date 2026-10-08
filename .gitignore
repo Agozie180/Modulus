@@ -18,4 +18,5 @@ research/data24/tradable_rows.json
 node_modules/
 contracts/node_modules
 out/
+.vercel/
 cache/

@@ -6,6 +6,13 @@
 > *direction* right but its *size* wrong, it overshoots ~2×. Modulus' Council of Elders buys the weekend panic,
 > trims the euphoria, and commits a Merkle-sealed forecast of Monday's open to BNB Chain that reality grades at 9:30 ET.
 
+**At a glance**
+- **What it is** — an autonomous agent that trades tokenized US stocks (bStocks) on BNB Chain, with a Council of Elders voting every verdict.
+- **The edge** — on weekends only the token trades, on ~10× thinner books; the crowd overshoots Monday's move ~2×, so Modulus fades the weekend panic (66.5% win, +103 bps on 1–2% moves).
+- **On-chain proof** — every Sunday it Merkle-seals a forecast of Monday's open to [`WeekendOracle.sol`](contracts/WeekendOracle.sol) on BSC, then reveals and self-grades (hit rate, Brier); a track record nobody can edit.
+- **Runs read-only, no keys** — `python -m modulus scan` runs the live council on all 87 bStocks from public data; simulate/dry-run is the default and live trades are capped at $5/trade, $20/day.
+- **Live on mainnet** — first real execution: **BOUGHT 0.05453 SOXSB for $1.68** at 63% council confidence. Tx [`0x9ff3ef…ca449a`](https://bsctrace.com/tx/0x9ff3ef4e5d87446aec519e6c12dde64e97a5d9890d2f3f0bbf7545b9e2ca449a) on BSC — see [`docs/LIVE_TRADE.md`](docs/LIVE_TRADE.md).
+
 ![discovery curve](docs/img/discovery_curve.png)
 
 ## The finding (858 stock-weekends, 17 weekends, all 87 bStocks)
@@ -54,9 +61,9 @@ liquidity clock, **limit orders only** in thin hours, clip size × √depth, tig
 | Elder | What it watches | Data |
 |---|---|---|
 | **The Night Watchman** (gap) | Knows which night it is. Dark weekend: **fades** stock-specific moves >1% (66% win). Weeknight: leans with them. | Binance Spot 24/7 klines + Two Nights clock |
-| **The Whale Watcher** (whale) | Spot taker-buy aggressor share since the close, on-chain buy vs sell flow 1h/4h/24h, smart-money and KOL holding share, Binance-wallet avg cost vs price, top-10 concentration, tracked smart-money trades | token dynamic, `baw tracker`, `baw leaderboard`, `baw signal` |
+| **The Whale Watcher** (whale) | Spot taker-buy aggressor share since the close, on-chain buy vs sell flow 1h/4h/24h, smart-money and KOL holding share, Binance-wallet avg cost vs price, top-10 concentration, tracked smart-money trades | token dynamic, wallet-skills `binance-wallet-tracker` / `binance-leaderboard` / `binance-trading-signal` |
 | **The Arbiter** | The same company as **bStock vs Ondo vs xStocks**, per share (price / sharesMultiplier). Flags >15% gaps as broken feeds, not free money. | RWA Data API (3 platforms) |
-| **The Value Elder** | 52-week range position, P/E, ROE | RWA underlying-market / stockInfo |
+| **The Value Elder** | 52-week range position, P/E (ROE used as an optional quality gate when present) | RWA underlying-market / stockInfo |
 | **The Sentinel** | **Veto only.** Corporate actions (dividend, split, merger), earnings limits, paused markets, stale prices, oracle sanity, token audit (fail-closed) | RWA status, `query-token-audit` |
 
 **How the council decides** ([`council.py`](modulus/council.py))
@@ -68,7 +75,7 @@ liquidity clock, **limit orders only** in thin hours, clip size × √depth, tig
    probability, shrunk toward 0.5, capped at 80%. It's seeded with 259 historical dark-weekend signals (claimed 65.9%, observed 65.6%, Brier 0.2255, ECE 0.28%) and refit on every resolved verdict.
    Brier score, ECE and the reliability table are public (`python -m modulus calibration`, MCP tool `modulus_calibration`).
 6. **Sizing** ([`sizing.py`](modulus/sizing.py)): quarter-Kelly on the calibrated probability × (1 − dissent),
-   then $5 per trade, $20 per day (resting limit orders included) and 20% per ticker caps. bStocks are whitelisted and do **not** consume the Agentic Wallet `dailyLimit`, so these caps are the binding guardrail.
+   then $5 per trade, $20 per day (resting limit orders included) and 20% per ticker caps. Modulus' own $5/$20/20% caps are the binding guardrail; per the campaign rules an eligible bStock only skips the wallet's `query-token-audit` pre-check, while the Agentic Wallet `dailyLimit` still applies to spend.
 
 Every verdict lands in SQLite with each elder's vote. The next session scores it, and the scores
 feed back into calibration and elder weights. That makes Modulus a **self-auditing** agent.
@@ -82,12 +89,12 @@ feed back into calibration and elder weights. That makes Modulus a **self-auditi
 | Trading API | quote (bStocks return a LiquidMesh SWAP **and** a PcsXRfq RFQ route; best net-out, firm RFQ preferred within 10 bps), on-chain allowance check, approve only when short + re-quote (30 s quote TTL), swap with `priceImpactProtectionPercent`, RFQ EIP-712 submit + poll to FILLED/FAILED/EXPIRED/CANCELLED, 40369 market-closed → DEFERRED | `executor.py` |
 | Transaction API | **simulate** (`evmTx{from,to,value,data}`) before every raw swap, gas limit, broadcast with MEV protection, tx-detail polling | `executor.py` (dry-run is the default) |
 | Wallet API / Address Portfolio | balances, tx detail polling, per-token PnL | `binance_web3.py`, ledger resolve |
-| DeFi API | idle-USDT parking candidates between trades (investment list / deposit calldata) | `binance_web3.py` |
+| DeFi API | idle-USDT parking functions (investment list / deposit calldata) — library-level, not yet wired into the autonomous loop | `binance_web3.py` |
 | b402 Payments | x402 **V2** paid `/verdict/{ticker}`: 402 + `PAYMENT-REQUIRED` → `PAYMENT-SIGNATURE` → B402 `verify` → council runs → `settle` → `PAYMENT-RESPONSE`; offers U / USD1 (EIP-3009) and USDT (Permit2) copied from `/supported`; Bazaar metadata for discovery | `server/x402_api.py` |
-| **Agentic Wallet / Wallet Skills** | preflight (`cli-check`, `wallet status`, `settings`), `tx-lock`, `market-order` quote/swap/poll, **`limit-order` buy/sell for thin weekend books** (+ reconcile/cancel at the US open), `x402-payment preview/sign`, `tracker`, `leaderboard analyze`, `signal`, `x402-payment`, `query-token-audit`, `binance-tokenized-securities-info` | `clients/baw.py`, executor `baw` mode |
+| **Agentic Wallet / Wallet Skills** | `baw` CLI subcommands — preflight (`cli-check`, `wallet status`, `settings`), `tx-lock`, `market-order` quote/swap/poll, **`limit-order` buy/sell for thin weekend books** (+ reconcile/cancel at the US open), `x402-payment preview/sign`, `defi`. Separate wallet-skills (not `baw` subcommands): `binance-wallet-tracker`, `binance-leaderboard`, `binance-trading-signal`, `query-token-audit`, `binance-tokenized-securities-info` | `clients/baw.py`, executor `baw` mode |
 | **BNB Agent Studio** | Seller scaffold (studio-cli 0.0.14): ERC-8004 identity, ERC-8183 negotiate/notify_funded jobs, X402 face via B402; Modulus plugs in through the `RunWork` hook in `modulusWork.ts` | `agent-studio/` |
 | MCP | 7 tools (verdict, scan, twins, calibration, market clock, Monday Oracle, Two Nights) so any agent can ask the council. (Binance's own Web3 MCP server is still "coming soon"; Modulus ships its own.) | `server/mcp_server.py` |
-| BSC smart contract | `WeekendOracle.sol`: commit-reveal of Monday forecasts, window enforced on-chain, Merkle proofs, one-shot grade | `contracts/` |
+| BSC smart contract | `WeekendOracle.sol`: commit-reveal of Monday forecasts, window enforced on-chain, Merkle proofs, one-shot grade. One-command deploy, no Foundry needed: `cd contracts && PRIVATE_KEY=0x… node deploy.mjs --network testnet\|mainnet` | `contracts/` |
 | BNB Chain | PancakeSwap / BSC tokenized-equity liquidity via the aggregator | executor |
 
 ## Run it (60 seconds, no keys)
@@ -125,7 +132,7 @@ modulus/elders/     gap, whale, arbiter, value, sentinel
 modulus/clients/    binance_web3 (signed, all modules), public_bapi (keyless), baw (Agentic Wallet)
 modulus/server/     mcp_server, x402_api (+ internal core for Agent Studio)
 agent-studio/       Studio prompt + modulusWork.ts (RunWork hook)
-contracts/          WeekendOracle.sol (+ foundry.toml at repo root)
+contracts/          WeekendOracle.sol, deploy.mjs (ethers, no Foundry) + foundry.toml at repo root
 research/           FINDINGS.md, 24/7 Spot study scripts, charts, v1 weekend_study.py
 docs/               DX report draft, demo script, submission checklist
 ```

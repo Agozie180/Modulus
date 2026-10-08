@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Modulus — Council</title>
+<meta name="description" content="Modulus: an AI that trades tokenized stocks on BNB Chain and seals its Monday forecast on-chain before the bell.">
+<style>
+  :root{
+    --surface-1:#fcfcfb; --plane:#f9f9f7; --ink:#0b0b0b; --ink-2:#52514e; --muted:#898781;
+    --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,.10);
+    --series-1:#2a78d6; --series-2:#eb6834; --deemph:#c9c8c0;
+    --good:#0ca30c; --warn:#fab219; --crit:#d03b3b; --s1-contrast:#006300;
+    color-scheme: light;
+  }
+  :root[data-theme="dark"]{
+    --surface-1:#1a1a19; --plane:#0d0d0d; --ink:#ffffff; --ink-2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+    --series-1:#3987e5; --series-2:#d95926; --deemph:#3a3a37;
+    --good:#0ca30c; --warn:#fab219; --crit:#d03b3b; --s1-contrast:#0ca30c;
+    color-scheme: dark;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--plane); color:var(--ink);
+    font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  header,main,footer{max-width:1080px;margin:0 auto;padding:0 20px}
+  header{padding-top:34px}
+  .brandrow{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .brand{font-weight:700;font-size:20px;letter-spacing:-.02em}
+  .brand span{color:var(--muted);font-weight:500}
+  .tag{font-size:12px;color:var(--muted)}
+  .theme-btn{
+    background:var(--surface-1);border:1px solid var(--border);color:var(--ink-2);
+    border-radius:8px;padding:7px 11px;font:inherit;font-size:12px;cursor:pointer
+  }
+  h1{font-size:30px;line-height:1.2;letter-spacing:-.02em;margin:26px 0 8px;max-width:24ch}
+  .lede{color:var(--ink-2);max-width:62ch;margin:0 0 6px;font-size:15.5px}
+  .lede b{color:var(--ink)}
+  .stamp{font-size:12px;color:var(--muted);margin:10px 0 0}
+
+  section{margin:34px 0}
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:0 0 14px;font-weight:600}
+
+  /* KPI row */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .tile{background:var(--surface-1);border:1px solid var(--border);border-radius:14px;padding:16px 16px 14px}
+  .tile .v{font-size:30px;font-weight:700;letter-spacing:-.02em;line-height:1}
+  .tile .k{font-size:12px;color:var(--ink-2);margin-top:7px}
+  .tile .s{font-size:11px;color:var(--muted);margin-top:3px}
+  @media(max-width:720px){.kpis{grid-template-columns:repeat(2,1fr)}h1{font-size:25px}}
+
+  /* panels */
+  .grid2{display:grid;grid-template-columns:1.35fr 1fr;gap:16px}
+  @media(max-width:860px){.grid2{grid-template-columns:1fr}}
+  .panel{background:var(--surface-1);border:1px solid var(--border);border-radius:14px;padding:18px}
+  .panel h3{margin:0 0 3px;font-size:15px}
+  .panel .sub{color:var(--muted);font-size:12px;margin:0 0 16px}
+
+  /* bar chart */
+  .bar{display:grid;grid-template-columns:96px 1fr 58px;align-items:center;gap:12px;margin:12px 0}
+  .bar .lab{font-size:12.5px;color:var(--ink-2);text-align:right;font-variant-numeric:tabular-nums}
+  .bar .track{position:relative;height:26px;background:var(--plane);border-radius:6px;border:1px solid var(--border)}
+  .bar .fill{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:var(--deemph)}
+  .bar .fill.hi{background:var(--series-1)}
+  .bar .val{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
+  .baseline{position:relative;height:0;margin-top:-25px;pointer-events:none}
+  .baseline i{position:absolute;top:0;bottom:0;border-left:1px dashed var(--axis)}
+  .baseline-lbl{font-size:11px;color:var(--muted);margin-top:26px;text-align:right}
+
+  /* meter */
+  .meter{margin:14px 0}
+  .meter .row{display:flex;justify-content:space-between;font-size:12.5px;color:var(--ink-2);margin-bottom:6px}
+  .meter .track{height:10px;background:var(--plane);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+  .meter .fill{height:100%;background:var(--series-1);border-radius:5px}
+  .meter .fill.o{background:var(--series-2)}
+
+  /* stat list */
+  .stats{display:grid;gap:11px;margin:0}
+  .stat{display:flex;justify-content:space-between;gap:14px;border-bottom:1px solid var(--grid);padding-bottom:10px}
+  .stat:last-child{border-bottom:0;padding-bottom:0}
+  .stat .k{color:var(--ink-2);font-size:13px}
+  .stat .v{font-weight:600;font-variant-numeric:tabular-nums;font-size:13.5px}
+
+  .note{background:var(--surface-1);border:1px solid var(--border);border-left:3px solid var(--series-2);border-radius:10px;padding:14px 16px;color:var(--ink-2);font-size:13.5px;max-width:none}
+  .note b{color:var(--ink)}
+
+  footer{border-top:1px solid var(--grid);margin-top:44px;padding:20px;color:var(--muted);font-size:12px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
+  a{color:var(--series-1);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:1px}
+</style>
+</head>
+<body>
+<header>
+  <div class="brandrow">
+    <div class="brand">Modulus <span>· Council &amp; Monday Oracle</span></div>
+    <div style="display:flex;align-items:center;gap:14px">
+      <span class="tag" id="clock">—</span>
+      <button class="theme-btn" id="theme" aria-label="Toggle color theme">◐ Theme</button>
+    </div>
+  </div>
+  <h1>Wall Street is closed 65 hours a week. bStocks aren't.</h1>
+  <p class="lede">An autonomous agent that trades tokenized US stocks (<b>bStocks</b>) on BNB Chain, votes every verdict through a <b>Council of Elders</b>, and seals a Merkle-committed forecast of Monday's open <b>on-chain before the bell</b> — a track record nobody, us included, can edit.</p>
+  <p class="stamp">Out-of-sample results · 858 stock-weekends over 17 weekends · leave-one-weekend-out · BSC mainnet</p>
+</header>
+
+<main>
+  <section>
+    <h2>Monday Oracle — out of sample</h2>
+    <div class="kpis">
+      <div class="tile"><div class="v" style="color:var(--s1-contrast)">72.1%</div><div class="k">Right on ≥1% calls</div><div class="s">n=262 · Brier 0.223 vs 0.250 coin-flip</div></div>
+      <div class="tile"><div class="v">0.223</div><div class="k">Brier score</div><div class="s">beats a coin flip (0.250)</div></div>
+      <div class="tile"><div class="v">17</div><div class="k">Weekends graded</div><div class="s">all 87 bStocks · n=858</div></div>
+      <div class="tile"><div class="v">65h</div><div class="k">Wall Street closed / wk</div><div class="s">tokens keep trading</div></div>
+    </div>
+  </section>
+
+  <section class="grid2">
+    <div class="panel">
+      <h3>Accuracy rises with conviction</h3>
+      <p class="sub">Hit rate by the size of the gap the Oracle is willing to call. Higher-conviction calls are more often right.</p>
+      <div style="position:relative">
+        <div class="bar"><div class="lab">≥25 bps</div><div class="track"><div class="fill" style="width:57.3%"></div></div><div class="val">57.3%</div></div>
+        <div class="bar"><div class="lab">≥50 bps</div><div class="track"><div class="fill" style="width:61.7%"></div></div><div class="val">61.7%</div></div>
+        <div class="bar"><div class="lab">≥100 bps</div><div class="track"><div class="fill hi" style="width:72.1%"></div></div><div class="val">72.1%</div></div>
+        <div class="baseline" style="height:98px"><i style="left:50%"></i></div>
+      </div>
+      <div class="baseline-lbl">dashed line = 50% (coin flip)</div>
+      <div style="margin-top:8px;font-size:12px;color:var(--muted)">
+        <span class="dot" style="background:var(--series-1)"></span>≥100 bps &nbsp;·&nbsp;
+        <span class="dot" style="background:var(--deemph)"></span>lower conviction
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Two kinds of night</h3>
+      <p class="sub">When nothing else prices US stocks, token moves carry emotion — and the book is ~10× thinner.</p>
+      <div class="meter">
+        <div class="row"><span>Median hourly quote-volume — regular</span><span>$16,419</span></div>
+        <div class="track"><div class="fill" style="width:100%"></div></div>
+      </div>
+      <div class="meter">
+        <div class="row"><span>— dark weekend</span><span>$1,621</span></div>
+        <div class="track"><div class="fill o" style="width:9.9%"></div></div>
+      </div>
+      <div class="stats" style="margin-top:18px">
+        <div class="stat"><span class="k">Weekend share of hours</span><span class="v">29.8%</span></div>
+        <div class="stat"><span class="k">Weekend share of volume</span><span class="v">8.0%</span></div>
+        <div class="stat"><span class="k">Share of weekends the market move called Monday's direction</span><span class="v">13 / 17</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid2">
+    <div class="panel">
+      <h3>The edge, quantified</h3>
+      <p class="sub">The crowd gets Monday's <i>direction</i> right but its <i>size</i> wrong — it overshoots ~2×. Modulus fades the weekend panic.</p>
+      <div class="stats">
+        <div class="stat"><span class="k">Fade a 1–2% weekend move</span><span class="v" style="color:var(--s1-contrast)">66.5% win · +103 bps</span></div>
+        <div class="stat"><span class="k">Fade a &gt;2% weekend move</span><span class="v" style="color:var(--s1-contrast)">64.7% win · +164 bps</span></div>
+        <div class="stat"><span class="k">Same fade on <i>weeknights</i></span><span class="v" style="color:var(--crit)">−40 bps</span></div>
+        <div class="stat"><span class="k">Cheap-token (basis) signal, median</span><span class="v">7.8 bps</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Council of Elders</h3>
+      <p class="sub">Five votes pooled in log-odds, weighted by each elder's earned Brier skill. Any Sentinel veto ends it.</p>
+      <div class="stats">
+        <div class="stat"><span class="k">The Night Watchman</span><span class="v">market regime</span></div>
+        <div class="stat"><span class="k">The Whale Watcher</span><span class="v">on-chain flow</span></div>
+        <div class="stat"><span class="k">The Arbiter</span><span class="v">cross-platform price</span></div>
+        <div class="stat"><span class="k">The Value Elder</span><span class="v">fundamentals</span></div>
+        <div class="stat"><span class="k">The Sentinel</span><span class="v" style="color:var(--warn)">veto only</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="note"><b>We were wrong first.</b> v1 claimed weekend drift <i>continues</i> (59.8%, four weekends of DEX prints). Seventeen weekends of order-book data overturned it. The old study stays in the repo. Calibration is why you can trust an agent that is wrong in public.</div>
+  </section>
+</main>
+
+<footer>
+  <div>Modulus · BNB Chain tokenized-stocks hackathon · read-only demo, no keys</div>
+  <div><a href="https://github.com/Agozie180/Modulus">Repository</a> · <a href="https://github.com/Agozie180/Modulus/blob/main/research/FINDINGS.md">Full findings</a></div>
+</footer>
+
+<script>
+  const b=document.getElementById('theme');
+  b.addEventListener('click',()=>{const r=document.documentElement;r.setAttribute('data-theme',r.getAttribute('data-theme')==='dark'?'light':'dark');});
+  // Regime clock (UTC-based, no keys): mirrors modulus/clock.py regimes
+  function regime(){
+    const now=new Date();const d=now.getUTCDay();const h=now.getUTCHours();
+    // Fri 20:00 UTC -> Sun 22:00 UTC = dark weekend
+    if(d===6) return ['dark_weekend','#d03b3b'];
+    if(d===5 && h>=20) return ['dark_weekend','#d03b3b'];
+    if(d===0 && h<22) return ['dark_weekend','#d03b3b'];
+    if(d===0 && h>=22) return ['dawn','#fab219'];
+    if(d>=1 && d<=4 && h>=20) return ['weeknight','#898781'];
+    return ['regular','#0ca30c'];
+  }
+  const [name,color]=regime();
+  document.getElementById('clock').innerHTML='<span class="dot" style="background:'+color+'"></span>'+name+' · '+new Date().toISOString().slice(11,16)+' UTC';
+</script>
+</body>
+</html>

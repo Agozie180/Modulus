@@ -90,6 +90,6 @@
 - bStock quotes return both a SWAP route and an RFQ route; the RFQ typedDataToSign is documented as "hex string (or JSON-encoded string)" with a 0x1901 example. One canonical format would help.
 - The /swap rfq object: one page lists orderId, the OpenAPI schema does not.
 - quoteId lives 30 s, but an ERC-20 approval confirmation can take longer, so the docs should say "re-quote after approving".
-- Agentic Wallet: bStocks do not consume dailyLimit (good), but whether bStocks accept limit orders, and the baw exit codes, are not documented.
+- Agentic Wallet: per the campaign rules an eligible bStock only skips the `query-token-audit` pre-check — whether it also skips the `dailyLimit` is UNVERIFIED (we had assumed it did), `[VERIFY]` with a live key. Whether bStocks accept limit orders, and the baw exit codes, are not documented either.
 - Studio: the generated sellerCore.ts must export SellerCore/RunWork; the integration seam (RunWork) is not described for non-LLM work.
 - Solidity: we named a mapping `weeks` (a reserved time unit). Our fault, but a lint step in Studio templates would catch it.

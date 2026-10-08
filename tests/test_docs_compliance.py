@@ -213,11 +213,46 @@ print(json.dumps({"success": False, "error": {"code": 1, "name": "UNKNOWN", "mes
 '''
 
 
+_BAW_EXE_MAIN = (
+    "import os, sys, runpy\n"
+    'd = os.path.dirname(os.path.abspath(sys.argv[0]))\n'          # the .exe sits next to baw.py
+    'sys.argv = [os.path.join(d, "baw.py")] + sys.argv[1:]\n'
+    'runpy.run_path(sys.argv[0], run_name="__main__")\n'
+)
+
+
+def _baw_exe(dst):
+    """Windows-only launcher. `modulus.clients.baw` shells out to a BARE `baw`
+    (subprocess.run(["baw", ...]), no shell), and CreateProcess only auto-appends .exe - a .cmd/.bat
+    raises FileNotFoundError (WinError 2), while shutil.which() still reports it available. So emit a
+    real .exe: distlib's console-script launcher stub (pip bundles it) + shebang + a stored zip whose
+    __main__.py execs the sibling baw.py, mirroring POSIX's shebang. Args reach the fake identically."""
+    import pathlib, struct, io, zipfile
+    stub = None
+    for mod in ("pip._vendor.distlib", "distlib"):       # pip vendors distlib; plain distlib if present
+        try:
+            stub = pathlib.Path(__import__(mod, fromlist=["_"]).__file__).parent
+            break
+        except Exception:
+            continue
+    if stub is None:
+        raise RuntimeError("fake_baw: no distlib launcher (pip._vendor.distlib) to build baw.exe on Windows")
+    launcher = stub / ("t64.exe" if struct.calcsize("P") * 8 == 64 else "t32.exe")
+    z = io.BytesIO()
+    with zipfile.ZipFile(z, "w", zipfile.ZIP_STORED) as zf:
+        zf.writestr("__main__.py", _BAW_EXE_MAIN)
+    dst.write_bytes(launcher.read_bytes() + b"#!" + sys.executable.encode("utf-8") + b"\n" + z.getvalue())
+
+
 @pytest.fixture
 def fake_baw(tmp_path, monkeypatch):
-    b = tmp_path / "baw"
-    b.write_text(FAKE_BAW)
-    b.chmod(b.stat().st_mode | stat.S_IEXEC)
+    (tmp_path / "baw.py").write_text(FAKE_BAW)          # the fake, runnable under either interpreter
+    if os.name == "nt":
+        _baw_exe(tmp_path / "baw.exe")                  # CreateProcess needs a real .exe, not a .cmd
+    else:
+        b = tmp_path / "baw"                            # extensionless + shebang, exactly as on POSIX
+        b.write_text(FAKE_BAW)
+        b.chmod(b.stat().st_mode | stat.S_IEXEC)
     log = tmp_path / "log"
     monkeypatch.setenv("BAW_LOG", str(log))
     monkeypatch.setenv("PATH", f"{tmp_path}{os.pathsep}{os.environ['PATH']}")

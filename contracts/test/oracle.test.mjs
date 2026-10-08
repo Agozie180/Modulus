@@ -20,7 +20,7 @@ const ok = (cond, name) => { if (cond) { pass++; console.log('  ok  ', name); } 
 // 1. compile
 const src = fs.readFileSync(path.join(repo, 'contracts', 'WeekendOracle.sol'), 'utf8');
 const out = JSON.parse(solc.compile(JSON.stringify({ language: 'Solidity', sources: { 'W.sol': { content: src } },
-  settings: { optimizer: { enabled: true, runs: 200 }, evmVersion: 'shanghai', outputSelection: { '*': { '*': ['abi', 'evm.bytecode.object'] } } } })));
+  settings: { optimizer: { enabled: true, runs: 200 }, evmVersion: 'cancun', outputSelection: { '*': { '*': ['abi', 'evm.bytecode.object'] } } } })));
 const errs = (out.errors || []).filter(e => e.severity === 'error');
 ok(errs.length === 0, 'WeekendOracle.sol compiles with solc ' + solc.version().split('+')[0]);
 if (errs.length) { console.log(errs.map(e => e.formattedMessage).join('\n')); process.exit(1); }
@@ -39,7 +39,8 @@ import secrets; salt = secrets.token_bytes(32)
 print(json.dumps({"root": root.hex(), "salt": salt.hex(), "commitment": oracle._h(root + salt).hex(),
   "pre": {t: f"{wk}|{t}|{fc[t]['gap_hat_bps']}|{fc[t]['p_up']}" for t in tick},
   "proofs": {t: oracle.proof(levels, i) for i, t in enumerate(tick)}, "inner": [levels[1][0].hex(), levels[1][1].hex()]}))`;
-const M = JSON.parse(execFileSync(process.env.PYTHON || 'python3', ['-c', py]).toString());
+const PYTHON = process.env.PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
+const M = JSON.parse(execFileSync(PYTHON, ['-c', py]).toString());
 const H = h => '0x' + h;
 
 // 3. EVM

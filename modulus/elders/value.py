@@ -1,8 +1,10 @@
 """The Value Elder - slow, skeptical, fundamentals from the RWA layer.
 
-Uses stockInfo: 52-week range position, P/E, ROE, free cash flow. Low weight:
-it rarely decides a trade alone, but it brakes momentum buys at stretched
-valuations and supports dips in high-quality names.
+Core stockInfo fields: 52-week range position and P/E. ROE (returnOnEquity) is an
+optional quality gate, applied only when the RWA layer actually provides it - it is
+not a documented core RWA field. Low weight: this elder rarely decides a trade alone,
+but it brakes momentum buys at stretched valuations and supports dips in high-quality
+names.
 """
 from __future__ import annotations
 from .base import Elder, Opinion, clamp
@@ -28,9 +30,11 @@ class ValueElder(Elder):
             return self.abstain("no fundamentals")
         pos = (p - lo) / (hi - lo)
         ev = {"range_pos": round(pos, 3), "pe": pe, "roe": roe}
-        quality = (roe or 0) > 0.15
-        if pos < 0.25 and quality:
+        quality = roe is not None and roe > 0.15
+        # Guard each formatting branch on the field being present: pe/roe are Optional and the
+        # reasoning must never raise when POE / 52w range / ROE data is missing (abstain instead).
+        if roe is not None and pos < 0.25 and quality:
             return Opinion(self.name, 1, 0.56, f"Quality name (ROE {roe:.0%}) near 52-week low ({pos:.0%} of range).", ev)
-        if pos > 0.95 and pe and pe > 60:
+        if pe is not None and pos > 0.95 and pe > 60:
             return Opinion(self.name, -1, 0.55, f"At {pos:.0%} of 52-week range with P/E {pe:.0f}: stretched.", ev)
-        return self.abstain(f"neutral: {pos:.0%} of 52w range, P/E {pe}", **ev)
+        return self.abstain(f"neutral: {pos:.0%} of 52w range, P/E {pe if pe is not None else 'n/a'}", **ev)

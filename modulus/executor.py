@@ -6,8 +6,10 @@ Modes
   baw    : Binance Agentic Wallet. Status gate (openState / halts) -> tx-lock -> BNB gas floor ->
            quote vs reference price (quotes carry no priceImpact field) -> LIMIT order in thin hours
            (dark weekend / dawn) or MEV-protected market swap -> poll to a terminal state.
-           bStocks are whitelisted and do NOT consume the wallet's dailyLimit, so Modulus' own
-           RiskLimits ($5/trade, $20/day, resting limits included) are the binding guardrail.
+           An eligible bStock earns the Agentic Wallet security pre-check exemption only (it may
+           skip the `query-token-audit` scam/honeypot check); the wallet's dailyLimit still applies
+           to spend. Modulus' own RiskLimits ($5/trade, $20/day, resting limits included) remain the
+           binding guardrail.
   api    : direct Web3 API. bStock quotes can return a LiquidMesh SWAP route AND a PcsXRfq RFQ route.
            Pick the best net-out (prefer the firm RFQ price within rfq_prefer_bps). Allowance is read
            on-chain first; approval only when short, then RE-QUOTE (quoteId TTL 30 s, 40401).
