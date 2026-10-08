@@ -12,6 +12,7 @@
 - **On-chain proof** — every Sunday it Merkle-seals a forecast of Monday's open to [`WeekendOracle.sol`](contracts/WeekendOracle.sol) on BSC, then reveals and self-grades (hit rate, Brier); a track record nobody can edit.
 - **Runs read-only, no keys** — `python -m modulus scan` runs the live council on all 87 bStocks from public data; simulate/dry-run is the default and live trades are capped at $5/trade, $20/day.
 - **Live on mainnet** — first real execution: **BOUGHT 0.05453 SOXSB for $1.68** at 63% council confidence. Tx [`0x9ff3ef…ca449a`](https://bsctrace.com/tx/0x9ff3ef4e5d87446aec519e6c12dde64e97a5d9890d2f3f0bbf7545b9e2ca449a) on BSC — see [`docs/LIVE_TRADE.md`](docs/LIVE_TRADE.md).
+- **Live dashboard** — https://dashboard-zeta-hazel-llhp56jb66.vercel.app (council + Monday Oracle results, no keys needed).
 
 ![discovery curve](docs/img/discovery_curve.png)
 
