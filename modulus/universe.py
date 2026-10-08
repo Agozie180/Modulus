@@ -45,9 +45,16 @@ class Asset:
 
 def load_universe(with_dynamic: bool = True, tickers: list[str] | None = None) -> list[Asset]:
     lists = {t: [x for x in pub.rwa_list(t) if x.get("chainId") == BSC] for t in PROVIDERS}
+    # Accept either the base ticker (IBM) or the bStock symbol (IBMB): `python -m modulus scan IBMB`
+    # is the form the README shows, but the universe is keyed on the base ticker.
+    want = {t.upper() for t in tickers} if tickers else None
+    def _match(x: dict) -> bool:
+        if not want:
+            return True
+        return x["ticker"].upper() in want or str(x.get("symbol", "")).upper() in want
     assets: dict[str, Asset] = {}
     for x in lists[3]:
-        if tickers and x["ticker"] not in tickers:
+        if not _match(x):
             continue
         a = Asset(x["ticker"], int(x.get("assetType") or 1))
         a.legs["bstock"] = Leg("bstock", x["symbol"], x["contractAddress"], float(x.get("multiplier") or 1))

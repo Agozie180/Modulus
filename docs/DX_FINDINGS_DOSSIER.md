@@ -37,12 +37,16 @@
 - Binance's own Web3 **MCP server is "coming soon," not live** — so shipping our own MCP server is a real gap-filler, not redundant. Good thing to say out loud.
 
 ## 5. Tokenized-stock specifics (the section judges care most about)
-- **1 token ≠ 1 share:** per-share price = on-chain token price ÷ `sharesMultiplier`. Our Arbiter compares bStock vs Ondo vs xStocks **per share** and flags >15% gaps as broken feeds. `[VERIFY]` the field name.
+- **1 token ≠ 1 share — CONFIRMED with a live key.** `GET /api/v1/dex/market/rwa/price` returns BOTH prices for a token: for SOXSB, `tokenPrice: "30.63000000"` and `referencePrice: "30.356"`, and `tokenInfo.sharesMultiplier: "1.009026219854107205"`. **30.63 ÷ 1.009026 = 30.356** exactly. So the per-share divisor is confirmed to be `sharesMultiplier` (previously only inferred — the text docs never named the field). Our Arbiter compares bStock vs Ondo vs xStocks **per share** and flags >15% gaps as broken feeds.
 - Symbol conventions: bStock = `type=3`, suffix `…B`; Ondo = `type=1`, suffix `…on`; xStocks = `type=2`, suffix `…x`.
-- **Weekend liquidity (our whole thesis):** on weekends only the token trades, on ~10× thinner books (Sat ~$1.6k vs ~$16.4k per bStock-hour). `[YOU FILL]` the real slippage you saw on your live ≤$5 trades — this is the money quote for the report.
+- **Weekend liquidity (our whole thesis):** on weekends only the token trades, on ~10× thinner books (Sat ~$1.6k vs ~$16.4k per bStock-hour). `[YOU FILL]` the real slippage you saw on your live ≤$5 trades — this is the money quote for the report. (Our one live trade filled at $30.81 vs $30.86 reference — <0.2%.)
 - Market-closed is signalled by trading error codes, not a boolean: `40369 BSTOCK_INVALID_TRADING_TIME`, `40367 ONDO_MARKET_STATE_NOT_TRADABLE`. We map `40369 → DEFERRED`.
-- RFQ liquidity for RWA comes from `LiquidMesh` + `PcsXRfq`; SWAP route is `LiquidMesh`. `[VERIFY]` which route your bStocks actually quote.
-- `[YOU FILL]` off-hours behavior you observed: did quotes keep returning off-hours? did limit orders rest correctly in thin books?
+- **RFQ route not observed on our pairs — CORRECTED.** With a live key, both `USDT→SOXSB` and `USDT→NVDAB` quotes returned `executionMode: "SWAP"`, `vendorName: "LiquidMesh"`, and an **empty `rfq` block** — no RFQ route was offered. So the `quoteId` (route id) vs `rfq.orderId` distinction is **conditional on `executionMode == "RFQ"`**; our code handles both, but we could not reproduce an RFQ quote to test that branch live. Worth stating honestly in the report.
+- **`--tickers` accepts the bStock symbol too.** We hit a real papercut: the README shows `python -m modulus run --tickers IBMB`, but the universe is keyed on the base ticker (`IBM`), so `IBMB` matched nothing and the run silently did nothing. Fixed to accept either form.
+- `[YOU FILL]` off-hours behavior you observed: did quotes keep returning off-hours? did limit orders rest correctly in thin books? (We found limit orders were **unsupported for our token** — see §4/AI-stack.)
+
+## 5b. Endpoints confirmed live with a key (all returned 200 + data)
+`rwa/price` · `rwa/tokens` · `aggregator/quote` · `portfolio/overview` · `balance/all-token-balances-by-address` · `defi/data/investment/list` (**58 opportunities**) · `market/candles`. So the signed-API path (the `/build` prefix + HMAC signing) works end to end — a good thing to state in the report, since getting the signing wrong is the usual failure mode.
 
 ## 6. Redesign suggestions / requested capabilities (end the report strong)
 - Publish RWA/Market/Wallet/Transaction **response schemas** in the text docs.
