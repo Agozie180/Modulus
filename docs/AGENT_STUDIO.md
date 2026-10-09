@@ -13,6 +13,7 @@ price and the Modulus Python core (reached over a public tunnel) produces the ve
 | Agent card (public) | https://bnbagent-api.bnbchain.world/v1/rt/01M4F7C2ZWWBQ10DNRSFCNMT00/.well-known/agent-card.json |
 | A2A invoke (JSON-RPC) | https://bnbagent-api.bnbchain.world/v1/rt/01M4F7C2ZWWBQ10DNRSFCNMT00/a2a |
 | Agent wallet (signer) | `0xDA53Dc3b16A14076Fc2523c23f2d91F7ea30c2f8` (throwaway testnet wallet) |
+| ERC-8004 identity | agent **#2581** on registry `0x8004A818BFB912233c491871b3d84c89A494BD9e` (BSC testnet, chain 97), relayed gaslessly by the operator via `bag deploy verify` |
 | Commerce rails | ERC-8183 (negotiate / notify_funded) + B402 face |
 | LLM | Pieverse `auto/free` (zero-deposit) — but delivery work is the Modulus council, not the LLM |
 | Skills | `negotiate`, `notify_funded` over A2A |
@@ -67,7 +68,8 @@ should move to an always-on host.
 - **x402 paid rail is dormant** — the public x402 route returns 404 because PAID mode needs four B402 merchant
   credentials (a separate Binance developer-account application for this exact wallet). ERC-8183 (the rail shown
   above) is fully live; x402 would need that merchant onboarding.
-- **ERC-8004 on-chain identity is not registered** — `bag erc8004 register` needs testnet tBNB for gas and the
-  throwaway wallet is unfunded. The agent has its managed-platform identity (the runtime id + agent card) but no
-  ERC-8004 registry entry yet.
+- **ERC-8004 on-chain identity: registered** — agent **#2581** on the BSC-testnet registry
+  `0x8004A818BFB912233c491871b3d84c89A494BD9e`, relayed **gaslessly** by the operator via
+  `bag deploy verify` (no gas spent from the wallet). The agent wallet also holds 0.11 tBNB + 5 U for
+  ERC-8183 settlement.
 - **The core runs behind a dev tunnel** — it is up while the demo machine + tunnel are running, not 24/7.
