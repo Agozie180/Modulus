@@ -1,0 +1,7 @@
+# Core endpoint auth enforcement (public tunnel)
+
+URL: https://pursuant-obligations-advisor-dear.trycloudflare.com/core/verdict/NVDA
+
+no token  -> HTTP 401
+bad token -> HTTP 401
+good token-> HTTP 200

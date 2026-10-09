@@ -14,6 +14,7 @@
 - **Live on mainnet** — first real execution: **BOUGHT 0.05453 SOXSB for $1.68** at 63% council confidence. Tx [`0x9ff3ef…ca449a`](https://bsctrace.com/tx/0x9ff3ef4e5d87446aec519e6c12dde64e97a5d9890d2f3f0bbf7545b9e2ca449a) on BSC — see [`docs/LIVE_TRADE.md`](docs/LIVE_TRADE.md).
 - **Live dashboard** — https://dashboard-zeta-hazel-llhp56jb66.vercel.app (council + Monday Oracle results, no keys needed).
 - **On-chain, deployed** — [`WeekendOracle.sol`](contracts/WeekendOracle.sol) live on BSC mainnet at [`0xEebDda24…E71dB2`](https://bsctrace.com/address/0xEebDda242F73f3ed7c1d002aD2d8d2055eE71dB2) (`enforceWindow=true`), deployed in tx [`0xb36899…33735d`](https://bsctrace.com/tx/0xb36899524c3db23dd180700d4ad96dc38c11e4a983e4cd0566f9d93a0133735d).
+- **Hireable agent** — deployed as a BNB Agent Studio seller (ERC-8183); other agents `negotiate` a signed 0.01-U quote and `notify_funded` to buy a Council verdict. See [`docs/AGENT_STUDIO.md`](docs/AGENT_STUDIO.md).
 
 ![discovery curve](docs/img/discovery_curve.png)
 
