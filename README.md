@@ -12,6 +12,8 @@
 - **On-chain proof** — every Sunday it Merkle-seals a forecast of Monday's open to [`WeekendOracle.sol`](contracts/WeekendOracle.sol) on BSC, then reveals and self-grades (hit rate, Brier); a track record nobody can edit.
 - **Runs read-only, no keys** — `python -m modulus scan` runs the live council on all 87 bStocks from public data; simulate/dry-run is the default and live trades are capped at $5/trade, $20/day.
 - **Live on mainnet** — first real execution: **BOUGHT 0.05453 SOXSB for $1.68** at 63% council confidence. Tx [`0x9ff3ef…ca449a`](https://bsctrace.com/tx/0x9ff3ef4e5d87446aec519e6c12dde64e97a5d9890d2f3f0bbf7545b9e2ca449a) on BSC — see [`docs/LIVE_TRADE.md`](docs/LIVE_TRADE.md).
+
+**Live demo video** - https://youtu.be/Qu0zC4tkswg?si=DykH9bTkz1o-Qdc2
 - **Live dashboard** — https://dashboard-zeta-hazel-llhp56jb66.vercel.app (council + Monday Oracle results, no keys needed).
 - **On-chain, deployed** — [`WeekendOracle.sol`](contracts/WeekendOracle.sol) live on BSC mainnet at [`0xEebDda24…E71dB2`](https://bsctrace.com/address/0xEebDda242F73f3ed7c1d002aD2d8d2055eE71dB2) (`enforceWindow=true`), deployed in tx [`0xb36899…33735d`](https://bsctrace.com/tx/0xb36899524c3db23dd180700d4ad96dc38c11e4a983e4cd0566f9d93a0133735d). Week **2026-10-09** forecast (91 bStocks) **sealed before the bell** — commit tx [`0x2db53f…9f182`](https://bsctrace.com/tx/0x2db53f3d9d344a590af19c55fc9b3f0a37856da5fc70d3d2615bee82d9b9f182) (commitment `0x9ffc1118…703712`); reveal + self-grade after Monday's open.
 - **Hireable agent** — deployed as a BNB Agent Studio seller (ERC-8183); other agents `negotiate` a signed 0.01-U quote and `notify_funded` to buy a Council verdict. See [`docs/AGENT_STUDIO.md`](docs/AGENT_STUDIO.md).
