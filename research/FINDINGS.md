@@ -44,6 +44,20 @@ Forecast = 0.82 × weekend market move + 0.52 × stock-specific move. Leave-one-
 * all 858: Brier 0.2486 (coin-flip 0.25) — it abstains below 50 bps
 * calls of a **≥ 1% gap: right 72.1% (n=262), Brier 0.2226**, 9.3% less error than "no change".
 
+## Reproduce (what the shipped data regenerates)
+Exactly, from the data in `research/data24/` + `data/`, offline:
+* `python -m modulus oracle backtest` → all-858 Brier **0.2486**; ≥1% calls **72.1%** (n=**262**), Brier **0.2226**, error-cut 9.3%.
+* `python -m modulus calibration` → **259** seeded dark-weekend signals, claimed **65.9%**, observed **65.6%**, Brier **0.2255**, ECE **0.28%**.
+* Finding 2 (idio beta **0.52**, market direction **13/17**, corr **0.60**, idio>0.5% direction **61.6%** n=**518**) from `oracle_rows.json`.
+
+Approximately only: Finding 1's **8%-of-volume** and the **$16.4k** regular-session median, and Finding 3's exact
+bucket counts (n=176 / n=85), are computed from the raw 1h klines + Yahoo daily that `fetch_spot_24x7.py` /
+`oracle_tradable.py` regenerate (`spot_1h.json`, `yahoo_1d.json`) — those raw inputs are **not** shipped. From the
+shipped `tradable_rows.json` the 1–2% / >2% buckets come out n=175 (+103 bps) / n=84 (+162 bps) at 66.3% / 64.3%,
+within rounding of the table above; the 66.5% / 64.7% fade win-rates Modulus actually trades on are the
+`FADE_P` constants in `modulus/elders/gap.py`. Weekend share of hours (30%) and the Saturday ~$1.6k median
+reproduce from the shipped `liquidity_clock.json`.
+
 ## What we got wrong (and why it matters)
 Modulus v1 claimed weekend drift *continues* into Monday (59.8%, n=97) from 4 weekends of thin DEX prints.
 The 17-weekend Binance Spot study overturned it. We kept the old study in the repo and changed the elder.

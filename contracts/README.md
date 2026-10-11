@@ -45,8 +45,8 @@ python -m modulus oracle commit                     # prints WeekendOracle.commi
 cast send <ADDR> "commit(uint64,bytes32,uint32)" 20261009 0x<commitment> <n> --rpc-url bsc_testnet --account modulus
 python -m modulus oracle reveal --week 2026-10-09   # prints reveal(20261009, 0x<root>, 0x<salt>)
 cast send <ADDR> "reveal(uint64,bytes32,bytes32)" 20261009 0x<root> 0x<salt> --rpc-url bsc_testnet --account modulus
-python -m modulus oracle grade --week 2026-10-09    # hit 0.7212 / brier 0.2230 -> 7212 / 2230
-cast send <ADDR> "grade(uint64,int32,int32)" 20261009 7212 2230 --rpc-url bsc_testnet --account modulus
+python -m modulus oracle grade --week 2026-10-09    # computed Mon vs Yahoo opens; e.g. hit 0.7214 / brier 0.2226 -> 7214 / 2226
+cast send <ADDR> "grade(uint64,int32,int32)" 20261009 7214 2226 --rpc-url bsc_testnet --account modulus
 # anyone: prove one forecast from oracle/2026-10-09.json
 cast call <ADDR> "verifyForecast(uint64,string,bytes32[])(bool)" 20261009 "2026-10-09|NVDA|-35.2|0.4123" "[0x..,0x..]" --rpc-url bsc_testnet
 ```
