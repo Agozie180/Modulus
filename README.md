@@ -16,7 +16,7 @@
 **Live demo video** - https://youtu.be/Qu0zC4tkswg?si=DykH9bTkz1o-Qdc2
 - **Live dashboard** — https://dashboard-zeta-hazel-llhp56jb66.vercel.app (council + Monday Oracle results, no keys needed).
 - **On-chain, deployed** — [`WeekendOracle.sol`](contracts/WeekendOracle.sol) live on BSC mainnet at [`0xEebDda24…E71dB2`](https://bsctrace.com/address/0xEebDda242F73f3ed7c1d002aD2d8d2055eE71dB2) (`enforceWindow=true`), deployed in tx [`0xb36899…33735d`](https://bsctrace.com/tx/0xb36899524c3db23dd180700d4ad96dc38c11e4a983e4cd0566f9d93a0133735d). Week **2026-10-09** forecast (91 bStocks) **sealed before the bell** — commit tx [`0x2db53f…9f182`](https://bsctrace.com/tx/0x2db53f3d9d344a590af19c55fc9b3f0a37856da5fc70d3d2615bee82d9b9f182) (commitment `0x9ffc1118…703712`); reveal + self-grade after Monday's open.
-- **Hireable agent** — deployed as a BNB Agent Studio seller (ERC-8183); other agents `negotiate` a signed 0.01-U quote and `notify_funded` to buy a Council verdict. See [`docs/AGENT_STUDIO.md`](docs/AGENT_STUDIO.md).
+- **Hireable agent** — deployed as a BNB Agent Studio seller (ERC-8183); other agents `negotiate` a signed 0.01-U quote and `notify_funded` to buy a Council verdict. The signed `negotiate` quote and the live verdict core are verified; the full on-chain `fund → notify_funded → SUBMITTED` loop is not yet exercised. See [`docs/AGENT_STUDIO.md`](docs/AGENT_STUDIO.md).
 
 ![discovery curve](docs/img/discovery_curve.png)
 

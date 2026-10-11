@@ -21,7 +21,7 @@ price and the Modulus Python core (reached over a public tunnel) produces the ve
 Trial expires **2026-10-11T02:20Z** (managed trials last 48h). Artifacts below are the durable proof;
 the live endpoint is only up during the trial window.
 
-## Verified end-to-end: a signed ERC-8183 quote
+## Verified live: a signed ERC-8183 quote (the negotiate leg)
 
 Called `negotiate` for `ticker=NVDA` over OAuth2 + A2A (`docs/artifacts/agent_negotiate.json`). The
 deployed agent returned an **accepted, signed** quote:
@@ -66,8 +66,13 @@ should move to an always-on host.
 ## Honest limitations
 
 - **x402 paid rail is dormant** — the public x402 route returns 404 because PAID mode needs four B402 merchant
-  credentials (a separate Binance developer-account application for this exact wallet). ERC-8183 (the rail shown
-  above) is fully live; x402 would need that merchant onboarding.
+  credentials (a separate Binance developer-account application for this exact wallet). The ERC-8183 negotiate
+  leg (the rail shown above) is live; x402 would need that merchant onboarding.
+- **The full ERC-8183 job loop was not run end-to-end** — what is verified here is the signed `negotiate` quote,
+  plus the live Council core endpoint (`docs/artifacts/core_verdict_public.json`) and its bearer-auth
+  (`docs/artifacts/core_auth_check.txt`). The on-chain `createJob → setBudget → fund → notify_funded →
+  SUBMITTED → approve` cycle was **not** exercised against a funded job on this trial (its submission-checklist
+  item is still open), so `notify_funded` delivery has no on-chain artifact yet.
 - **ERC-8004 on-chain identity: registered** — agent **#2581** on the BSC-testnet registry
   `0x8004A818BFB912233c491871b3d84c89A494BD9e`, relayed **gaslessly** by the operator via
   `bag deploy verify` (no gas spent from the wallet). The agent wallet also holds 0.11 tBNB + 5 U for
