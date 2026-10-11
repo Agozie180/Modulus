@@ -43,5 +43,13 @@ python -m modulus run --nav 50 --tickers SOXS   # sized buy; MODULUS_EXECUTOR=ba
   but the CLI returned `"Raw limit orders are not supported."` (SERVICE_ERROR, code 2) for this token, so the
   trade ran as an MEV-protected market swap. The executor **relays the CLI error verbatim and never silently
   downgrades a conditional order** — here we deliberately chose a market order. Also a DX-report item.
+- **Order-id reconciliation.** The id returned by `market-order swap` did not match the id the fill
+  appeared under in `market-order list`: listing by the swap's returned id came back `total 0` even
+  though the order had `FINISHED`. The executor polls `market-order list --orderId <id>` and, on no
+  terminal match within the timeout, reports `PENDING` — never a false success
+  (`wait_market_order` in `clients/baw.py`). So the fill above was confirmed by listing recent orders
+  (order id `26100800001949322258`) and by the independent balance delta, not by that poll. The
+  executor does **not** auto-scan recent orders to re-link a mismatched id; that is a known limitation,
+  not a silent success.
 - This trade is the source of the on-chain link for the submission; the `WeekendOracle` commit for week
   `2026-10-09` is a separate, additional on-chain artifact.
