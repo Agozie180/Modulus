@@ -10,7 +10,7 @@
 - **What it is** — an autonomous agent that trades tokenized US stocks (bStocks) on BNB Chain, with a Council of Elders voting every verdict.
 - **The edge** — on weekends only the token trades, on ~10× thinner books; the crowd overshoots Monday's move ~2×, so Modulus fades the weekend panic (66.5% win, +103 bps on 1–2% moves).
 - **On-chain proof** — every Sunday it Merkle-seals a forecast of Monday's open to [`WeekendOracle.sol`](contracts/WeekendOracle.sol) on BSC, then reveals and self-grades (hit rate, Brier); a track record nobody can edit.
-- **Runs read-only, no keys** — `python -m modulus scan` runs the live council on all 87 bStocks from public data; simulate/dry-run is the default and live trades are capped at $5/trade, $20/day.
+- **Runs read-only, no keys** — `python -m modulus scan` runs the live council on every bStock on BSC (the universe is live: 87 across the Jun–Oct study window, 91 by the 2026-10-09 commit) from public data; simulate/dry-run is the default and live trades are capped at $5/trade, $20/day.
 - **Live on mainnet** — first real execution: **BOUGHT 0.05453 SOXSB for $1.68** at 63% council confidence. Tx [`0x9ff3ef…ca449a`](https://bsctrace.com/tx/0x9ff3ef4e5d87446aec519e6c12dde64e97a5d9890d2f3f0bbf7545b9e2ca449a) on BSC — see [`docs/LIVE_TRADE.md`](docs/LIVE_TRADE.md).
 
 **Live demo video** - https://youtu.be/Qu0zC4tkswg?si=DykH9bTkz1o-Qdc2
@@ -106,7 +106,7 @@ feed back into calibration and elder weights. That makes Modulus a **self-auditi
 
 ```bash
 git clone <repo> && cd modulus
-python -m modulus scan                 # live council on all 87 bStocks, read-only public data
+python -m modulus scan                 # live council on every bStock on BSC (91 at the last commit), public data
 python -m modulus explain NVDA         # every elder's reasoning
 python -m modulus calibration          # Brier, ECE, reliability table
 python -m pytest -q                    # 50 offline tests (docs-compliance, executor, x402, MCP)

@@ -30,7 +30,7 @@ This is the artifact to show judges: a real, small, faithful execution — not a
 
 ```bash
 baw wallet status --json                 # -> CONNECTED
-python -m modulus scan                   # live council over all 87 bStocks (read-only)
+python -m modulus scan                   # live council over every bStock on BSC (read-only)
 python -m modulus run --nav 50 --tickers SOXS   # sized buy; MODULUS_EXECUTOR=baw for live
 ```
 
