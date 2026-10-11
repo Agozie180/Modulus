@@ -57,7 +57,7 @@ python -m modulus oracle forecast | commit | reveal --week 2026-10-09 | grade --
 ## The Two Nights clock (how it trades)
 
 `python -m modulus clock` → regime (`dark_weekend`, `dawn`, `weeknight`, `regular`), depth factor from the
-liquidity clock, **limit orders only** in thin hours, clip size × √depth, tighter slippage (0.5%) on weekends.
+liquidity clock, **limit orders** in thin hours (never silently downgraded to a market order if the venue rejects them), clip size × √depth, tighter slippage (0.5%) on weekends.
 
 ![liquidity clock](docs/img/liquidity_clock.png)
 
@@ -96,7 +96,7 @@ feed back into calibration and elder weights. That makes Modulus a **self-auditi
 | Wallet API / Address Portfolio | balances, tx detail polling, per-token PnL | `binance_web3.py`, ledger resolve |
 | DeFi API | idle-USDT parking functions (investment list / deposit calldata) — library-level, not yet wired into the autonomous loop | `binance_web3.py` |
 | b402 Payments | x402 **V2** paid `/verdict/{ticker}`: 402 + `PAYMENT-REQUIRED` → `PAYMENT-SIGNATURE` → B402 `verify` → council runs → `settle` → `PAYMENT-RESPONSE`; offers U / USD1 (EIP-3009) and USDT (Permit2) copied from `/supported`; Bazaar metadata for discovery | `server/x402_api.py` |
-| **Agentic Wallet / Wallet Skills** | `baw` CLI subcommands — preflight (`cli-check`, `wallet status`, `settings`), `tx-lock`, `market-order` quote/swap/poll, **`limit-order` buy/sell for thin weekend books** (+ reconcile/cancel at the US open), `x402-payment preview/sign`, `defi`. Separate wallet-skills (not `baw` subcommands): `binance-wallet-tracker`, `binance-leaderboard`, `binance-trading-signal`, `query-token-audit`, `binance-tokenized-securities-info` | `clients/baw.py`, executor `baw` mode |
+| **Agentic Wallet / Wallet Skills** | `baw` CLI subcommands — preflight (`cli-check`, `wallet status`, `settings`), `tx-lock`, `market-order` quote/swap/poll, **`limit-order` buy/sell for thin weekend books** (+ reconcile/cancel at the US open; note: live, the Agentic Wallet rejected a raw limit order for the bStock we tried — `SERVICE_ERROR` code 2, "Raw limit orders are not supported" for SOXSB — and the executor relays that verbatim rather than downgrading to a market order), `x402-payment preview/sign`, `defi`. Separate wallet-skills (not `baw` subcommands): `binance-wallet-tracker`, `binance-leaderboard`, `binance-trading-signal`, `query-token-audit`, `binance-tokenized-securities-info` | `clients/baw.py`, executor `baw` mode |
 | **BNB Agent Studio** | Seller scaffold (studio-cli 0.0.14): ERC-8004 identity, ERC-8183 negotiate/notify_funded jobs, X402 face via B402; Modulus plugs in through the `RunWork` hook in `modulusWork.ts` | `agent-studio/` |
 | MCP | 7 tools (verdict, scan, twins, calibration, market clock, Monday Oracle, Two Nights) so any agent can ask the council. (Binance's own Web3 MCP server is still "coming soon"; Modulus ships its own.) | `server/mcp_server.py` |
 | BSC smart contract | `WeekendOracle.sol`: commit-reveal of Monday forecasts, window enforced on-chain, Merkle proofs, one-shot grade. One-command deploy, no Foundry needed: `cd contracts && PRIVATE_KEY=0x… node deploy.mjs --network testnet\|mainnet` | `contracts/` |
