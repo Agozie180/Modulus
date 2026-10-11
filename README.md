@@ -109,7 +109,7 @@ git clone <repo> && cd modulus
 python -m modulus scan                 # live council on every bStock on BSC (91 at the last commit), public data
 python -m modulus explain NVDA         # every elder's reasoning
 python -m modulus calibration          # Brier, ECE, reliability table
-python -m pytest -q                    # 50 offline tests (docs-compliance, executor, x402, MCP)
+python -m pytest -q                    # 51 offline tests (docs-compliance, executor, x402, MCP)
 cd contracts && npm install && npm test   # 20 EVM tests: compile, commit-reveal, Python Merkle proofs on-chain
 ```
 

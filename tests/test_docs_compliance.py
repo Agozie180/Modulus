@@ -433,3 +433,18 @@ def test_daily_cap_counts_working_limit_orders(tmp_path):
     L.record_order(1, "baw", "BUY", 5.0, "WORKING", "s1", {})
     L.record_order(2, "baw", "BUY", 5.0, "REJECTED", "", {})
     assert L.spent_today() == 5.0
+
+
+# ------------------------------------------------------------------ --tickers accepts base ticker OR bStock symbol
+def test_tickers_accepts_base_ticker_or_bstock_symbol(monkeypatch):
+    """README/LIVE_TRADE show `--tickers IBMB`, but the universe is keyed on the base ticker (IBM).
+    load_universe must match either form (and be case-insensitive), or `--tickers IBMB` silently scans nothing."""
+    from modulus import universe as u
+    rows = {3: [{"ticker": "IBM", "symbol": "IBMB", "contractAddress": "0xibm", "assetType": 1, "multiplier": 1, "chainId": "56"},
+                {"ticker": "NVDA", "symbol": "NVDAB", "contractAddress": "0xnvda", "assetType": 1, "multiplier": 1, "chainId": "56"}]}
+    monkeypatch.setattr(u.pub, "rwa_list", lambda t: rows.get(t, []))
+    pick = lambda t: [a.ticker for a in u.load_universe(with_dynamic=False, tickers=[t])]
+    assert pick("IBM") == ["IBM"]          # base ticker (the universe key)
+    assert pick("IBMB") == ["IBM"]         # the bStock symbol the README's --tickers example uses
+    assert pick("ibmb") == ["IBM"]         # case-insensitive
+    assert pick("ZZZZ") == []              # unknown ticker matches nothing
