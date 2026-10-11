@@ -10,7 +10,9 @@ Modes
            skip the `query-token-audit` scam/honeypot check); the wallet's dailyLimit still applies
            to spend. Modulus' own RiskLimits ($5/trade, $20/day, resting limits included) remain the
            binding guardrail.
-  api    : direct Web3 API. bStock quotes can return a LiquidMesh SWAP route AND a PcsXRfq RFQ route.
+  api    : direct Web3 API. bStock quotes can return a LiquidMesh SWAP route AND a PcsXRfq RFQ route
+           (in practice every live bStock quote returned SWAP only, with an empty rfq block, so the
+           RFQ branch below is covered by tests/fixtures, not yet by a live RFQ quote).
            Pick the best net-out (prefer the firm RFQ price within rfq_prefer_bps). Allowance is read
            on-chain first; approval only when short, then RE-QUOTE (quoteId TTL 30 s, 40401).
            RFQ: sign rfq.typedDataToSign (dict | JSON string | 0x1901 blob) -> /order/submit (same
